@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0b0b0c">
+  <title>ALLCON - Smartsheet Estimating & Quote Matrix</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2224%22 fill=%22%23121215%22/><path d=%22M22 24h56v52H22z%22 fill=%22none%22 stroke=%22%23dc2626%22 stroke-width=%228%22/><path d=%22M22 42h56M46 24v52%22 stroke=%22%23ffffff%22 stroke-width=%226%22/></svg>">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <style>
+    html.dark, html.dark body { background-color: #0b0b0c !important; color: #f4f4f5 !important; }
+    .card-glass {
+      background: rgba(24, 24, 27, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    }
+    .grid-cell-input {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 4px 6px;
+      width: 100%;
+      transition: all 0.12s;
+    }
+    .grid-cell-input:hover {
+      border-color: rgba(255,255,255,0.12);
+      background: rgba(9, 9, 11, 0.45);
+    }
+    .grid-cell-input:focus {
+      outline: none;
+      border-color: #dc2626;
+      background: #09090b;
+    }
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: #121215; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #dc2626; }
+  </style>
+</head>
+<body class="bg-[#0b0b0c] text-zinc-100 font-sans min-h-screen flex flex-col">
+
+  <!-- LOGIN SCREEN -->
+  <div id="login-screen" class="fixed inset-0 bg-[#0b0b0c] z-50 flex items-center justify-center p-4">
+    <div class="card-glass rounded-2xl max-w-sm w-full p-6 space-y-5">
+      <div class="text-center space-y-2">
+        <img src="https://raw.githubusercontent.com/allconafrica/KERF/main/ALLCON-Logo.jpg" alt="ALLCON" class="h-12 mx-auto rounded bg-white p-1">
+        <h1 class="text-lg font-extrabold tracking-tight text-white">Estimating & Quote Matrix</h1>
+        <p class="text-xs text-zinc-400">Sign in with your assigned estimating credentials</p>
+      </div>
+      <form onsubmit="handleLogin(event)" class="space-y-3 text-sm">
+        <div>
+          <label class="block text-xs font-bold text-zinc-400 mb-1">USERNAME</label>
+          <input type="text" id="login-user" required placeholder="e.g. Norman or Boss" class="w-full p-3 rounded-xl bg-zinc-800 border border-zinc-700 text-white">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-zinc-400 mb-1">PASSWORD</label>
+          <input type="password" id="login-pass" required placeholder="••••••••" class="w-full p-3 rounded-xl bg-zinc-800 border border-zinc-700 text-white">
+        </div>
+        <div id="login-error" class="text-xs text-red-400 font-semibold hidden">Invalid username or password.</div>
+        <button type="submit" id="login-btn" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg transition">
+          Sign In
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="bg-[#121215] border-b border-zinc-800 sticky top-0 z-30">
+    <div class="max-w-[1600px] mx-auto px-4 py-2.5 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center gap-3">
+        <a href="https://allconafrica.github.io/allcondashboard/" class="hover:opacity-90 transition">
+          <img src="https://raw.githubusercontent.com/allconafrica/KERF/main/ALLCON-Logo.jpg" alt="ALLCON" class="h-9 rounded bg-white p-1">
+        </a>
+        <div>
+          <h1 class="text-base md:text-lg font-black text-white leading-tight tracking-tight">ALLCON Estimating & Quote Matrix</h1>
+          <div class="text-[11px] text-zinc-400 flex items-center gap-2">
+            <span>User: <strong id="header-username" class="text-amber-400">---</strong></span>
+            <span>•</span>
+            <span id="header-role" class="uppercase font-bold text-emerald-400">---</span>
+            <span id="sync-indicator" class="text-[10px] text-zinc-400 ml-1"><i class="fa-solid fa-circle text-[7px] text-emerald-500"></i> Synced</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <!-- 30-DAY NOTIFICATIONS BELL -->
+        <button onclick="openNotificationsModal()" class="relative bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold px-3 py-2 rounded-xl border border-zinc-700 transition flex items-center gap-1.5" title="30-Day @Tag Notifications">
+          <i class="fa-solid fa-bell text-amber-400"></i>
+          <span class="hidden sm:inline">30d Tags</span>
+          <span id="notif-badge" class="bg-red-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">0</span>
+        </button>
+
+        <button onclick="openTagModal()" class="bg-zinc-800 hover:bg-zinc-700 text-red-400 text-xs font-bold px-3 py-2 rounded-xl border border-zinc-700 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-at"></i> <span class="hidden sm:inline">Tag / Notify</span>
+        </button>
+
+        <button onclick="openSaveTemplateModal()" class="bg-zinc-800 hover:bg-zinc-700 text-sky-300 text-xs font-bold px-3 py-2 rounded-xl border border-zinc-700 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-layer-group"></i> <span class="hidden md:inline">Save Template</span>
+        </button>
+
+        <button onclick="exportEstimateZipPackage()" id="btn-export-zip" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
+          <i class="fa-solid fa-file-zipper"></i> <span>Export .ZIP</span>
+        </button>
+
+        <button onclick="saveCurrentEstimate(true)" id="btn-save-est" class="bg-red-600 hover:bg-red-700 text-white text-xs font-black px-4 py-2 rounded-xl shadow transition flex items-center gap-1.5">
+          <i class="fa-solid fa-floppy-disk"></i> Save Estimate
+        </button>
+
+        <button onclick="openAdminModal()" id="btn-admin-panel" class="hidden bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-xs font-bold px-3 py-2 rounded-xl border border-zinc-700">
+          <i class="fa-solid fa-user-shield"></i>
+        </button>
+
+        <button onclick="logout()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-xs font-bold px-2.5 py-2 rounded-xl border border-zinc-700" title="Log Out">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <div class="max-w-[1600px] mx-auto w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
+
+    <!-- LEFT SIDEBAR: SMARTSHEET FOLDER HIERARCHY -->
+    <aside class="lg:col-span-3 card-glass rounded-2xl p-3.5 flex flex-col justify-between h-fit lg:sticky lg:top-20 space-y-4">
+      <div class="space-y-3">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-2.5">
+          <span class="text-xs font-black uppercase tracking-wider text-red-500 flex items-center gap-1.5">
+            <i class="fa-solid fa-folder-tree"></i> Estimate Folders
+          </span>
+          <button onclick="openNewEstimateModal()" class="bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1 shadow">
+            <i class="fa-solid fa-plus"></i> New Estimate
+          </button>
+        </div>
+
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-zinc-500 text-xs"></i>
+          <input type="text" id="folder-search" oninput="renderFolderTree()" placeholder="Filter client, sub-folder, estimate..." class="w-full pl-8 pr-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:border-red-500 focus:outline-none">
+        </div>
+
+        <div id="folder-tree-container" class="space-y-1.5 max-h-[65vh] overflow-y-auto pr-1 text-xs">
+          <div class="text-zinc-500 text-center py-6"><i class="fa-solid fa-spinner fa-spin text-red-500 mr-1"></i> Loading folders...</div>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-zinc-800 flex justify-between items-center text-[11px] text-zinc-500">
+        <button onclick="loadAllData(true)" class="hover:text-white flex items-center gap-1"><i class="fa-solid fa-rotate"></i> Refresh Cloud</button>
+        <span id="est-count-label">0 Estimates</span>
+      </div>
+    </aside>
+
+    <!-- RIGHT WORKSPACE: ACTIVE ESTIMATE SHEET -->
+    <section class="lg:col-span-9 space-y-4 min-w-0">
+
+      <!-- ESTIMATE METADATA & COMMERCIAL PILLS BAR -->
+      <div class="card-glass rounded-2xl p-4 space-y-3">
+        <div class="flex flex-wrap justify-between items-start gap-3">
+          <div class="space-y-1 flex-grow min-w-[260px]">
+            <div class="flex items-center gap-2 flex-wrap text-[11px] font-bold text-zinc-400">
+              <span class="bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700 text-amber-400" id="crumb-client">CLIENT</span>
+              <i class="fa-solid fa-chevron-right text-[9px]"></i>
+              <span class="bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700 text-sky-300" id="crumb-subfolder">SUB-FOLDER</span>
+              <button onclick="openEditFolderModal()" class="text-zinc-400 hover:text-white underline text-[10px] ml-1"><i class="fa-solid fa-pen"></i> Move / Rename</button>
+            </div>
+            <input type="text" id="active-est-name" onchange="updateEstimateMeta('estimateName', this.value)" class="text-lg md:text-xl font-black text-white bg-transparent border-b border-transparent hover:border-zinc-700 focus:border-red-500 focus:outline-none w-full uppercase tracking-tight" value="NEW ESTIMATE">
+          </div>
+
+          <div class="flex items-center gap-2 flex-wrap">
+            <div>
+              <label class="block text-[10px] font-bold text-zinc-400 uppercase">Approval Status</label>
+              <select id="active-est-status" onchange="updateEstimateMeta('approvalStatus', this.value)" class="p-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-black text-amber-300">
+                <option value="DRAFT">DRAFT</option>
+                <option value="SUBMITTED">SUBMITTED FOR APPROVAL</option>
+                <option value="APPROVED">APPROVED</option>
+                <option value="REVISION REQUIRED">REVISION REQUIRED</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-zinc-400 uppercase">Total Mass (KG)</label>
+              <input type="number" step="0.01" id="active-est-kg" oninput="updateEstimateKg(this.value)" value="0" class="w-28 p-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-black text-white text-right">
+            </div>
+            <button onclick="deleteCurrentEstimate()" class="mt-4 bg-zinc-900 hover:bg-red-950 text-zinc-500 hover:text-red-400 p-2 rounded-xl border border-zinc-800 transition" title="Delete Estimate">
+              <i class="fa-solid fa-trash-can text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- COMMERCIAL TAG PILLS (INCLUSIONS, EXCLUDES, LEAD TIME, PAYMENT TERMS, SOW, ETC.) -->
+        <div class="pt-2 border-t border-zinc-800/80 flex flex-wrap items-center gap-2">
+          <span class="text-[10px] font-black uppercase tracking-wider text-zinc-400 mr-1">
+            <i class="fa-solid fa-tags text-red-500 mr-1"></i> Commercial Notes:
+          </span>
+          <div id="commercial-pills-container" class="flex flex-wrap items-center gap-1.5"></div>
+          <button onclick="openAddCommercialPillModal()" class="text-[11px] font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-dashed border-zinc-600 px-2.5 py-1 rounded-full transition flex items-center gap-1">
+            <i class="fa-solid fa-plus text-[9px] text-red-400"></i> Add Label (SOW / Terms)
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI SUMMARY STRIP (MIRRORS SMARTSHEET TOTALS & RATE PER KG) -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="card-glass p-3.5 rounded-xl border-l-4 border-sky-500">
+          <div class="text-[10px] font-bold text-zinc-400 uppercase">Total Supplier Quoted</div>
+          <div class="text-lg md:text-xl font-black text-white mt-0.5" id="kpi-total-cost">R 0.00</div>
+        </div>
+        <div class="card-glass p-3.5 rounded-xl border-l-4 border-red-600">
+          <div class="text-[10px] font-bold text-zinc-400 uppercase">Allcon Grand Estimate</div>
+          <div class="text-lg md:text-xl font-black text-emerald-400 mt-0.5" id="kpi-total-sell">R 0.00</div>
+        </div>
+        <div class="card-glass p-3.5 rounded-xl border-l-4 border-amber-500">
+          <div class="text-[10px] font-bold text-zinc-400 uppercase">Gross Margin / Markup</div>
+          <div class="text-lg md:text-xl font-black text-amber-300 mt-0.5" id="kpi-margin">R 0.00 (0.0%)</div>
+        </div>
+        <div class="card-glass p-3.5 rounded-xl border-l-4 border-purple-500">
+          <div class="text-[10px] font-bold text-zinc-400 uppercase">Rate Per KG (Allcon Est.)</div>
+          <div class="text-lg md:text-xl font-black text-white mt-0.5" id="kpi-rate-kg">R 0.00 / kg</div>
+        </div>
+      </div>
+
+      <!-- SMARTSHEET GRID TOOLBAR -->
+      <div class="card-glass rounded-2xl overflow-hidden">
+        <div class="bg-zinc-900/90 px-4 py-2.5 border-b border-zinc-800 flex flex-wrap justify-between items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <button onclick="addRow('group')" class="bg-sky-900/60 hover:bg-sky-800 text-sky-200 border border-sky-700/60 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+              <i class="fa-solid fa-folder-plus"></i> Add Section Group
+            </button>
+            <button onclick="addRow('item')" class="bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+              <i class="fa-solid fa-plus text-red-500"></i> Add Line Item
+            </button>
+            <button onclick="addRow('standalone')" class="bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 border border-amber-700/50 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+              <i class="fa-solid fa-star"></i> Add Buyout / Highlight Line
+            </button>
+          </div>
+          <div class="flex items-center gap-2 text-[11px] text-zinc-400">
+            <span><i class="fa-solid fa-paperclip text-zinc-400"></i> Empty</span>
+            <span>•</span>
+            <span><i class="fa-solid fa-paperclip text-red-500"></i> Quote Attached</span>
+          </div>
+        </div>
+
+        <!-- EDITABLE SPREADSHEET TABLE -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-[#121215] border-b border-zinc-800 text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                <th class="py-2.5 px-2 w-10 text-center">#</th>
+                <th class="py-2.5 px-2 w-24 text-center">Quotes / Notes</th>
+                <th class="py-2.5 px-2 min-w-[230px]">Category & Item</th>
+                <th class="py-2.5 px-2 min-w-[210px]">Supplier / Item Notes</th>
+                <th class="py-2.5 px-2 w-24">Supplier Ref</th>
+                <th class="py-2.5 px-2 w-32 text-right">Supplier Quoted (R)</th>
+                <th class="py-2.5 px-2 w-24 text-right">Markup %</th>
+                <th class="py-2.5 px-2 w-32 text-right">Allcon Estimate (R)</th>
+                <th class="py-2.5 px-2 w-28">Row Status</th>
+                <th class="py-2.5 px-2 w-20 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="estimate-grid-body" class="divide-y divide-zinc-800/70"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+  <!-- MODAL: NEW ESTIMATE (SELECT FOLDER + TEMPLATE) -->
+  <div id="new-est-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
+    <div class="card-glass rounded-2xl max-w-md w-full p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
+        <h2 class="text-base font-bold text-white flex items-center gap-2"><i class="fa-solid fa-file-circle-plus text-red-500"></i> Create New Estimate</h2>
+        <button onclick="closeModal('new-est-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="createNewEstimate(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">MAIN CLIENT FOLDER (e.g. MITTAL) *</label>
+          <input type="text" id="new-est-client" list="client-folder-suggestions" required placeholder="MITTAL" class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-bold uppercase">
+          <datalist id="client-folder-suggestions"></datalist>
+        </div>
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">SUB-FOLDER / END CLIENT (e.g. ESKOM, TRANSNET) *</label>
+          <input type="text" id="new-est-subfolder" list="subfolder-suggestions" required placeholder="ESKOM" class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-bold uppercase">
+          <datalist id="subfolder-suggestions"></datalist>
+        </div>
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">ESTIMATE / PROJECT NAME *</label>
+          <input type="text" id="new-est-name" required placeholder="e.g. EST-104 CONVEYOR CHUTE" class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-bold uppercase">
+        </div>
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">START FROM TEMPLATE</label>
+          <select id="new-est-template" class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-sky-300 font-bold"></select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-zinc-800">
+          <button type="button" onclick="closeModal('new-est-modal')" class="px-4 py-2 bg-zinc-800 text-white rounded-xl font-bold">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow">Create Sheet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MOVE / RENAME FOLDER PATH -->
+  <div id="edit-folder-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
+    <div class="card-glass rounded-2xl max-w-md w-full p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
+        <h2 class="text-base font-bold text-white">Move / Rename Estimate Folder</h2>
+        <button onclick="closeModal('edit-folder-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitEditFolder(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">CLIENT FOLDER</label>
+          <input type="text" id="move-client" required class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-bold uppercase">
+        </div>
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">SUB-FOLDER</label>
+          <input type="text" id="move-subfolder" required class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-bold uppercase">
+        </div>
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">ESTIMATE NAME</label>
+          <input type="text" id="move-name" required class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-bold uppercase">
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-zinc-800">
+          <button type="button" onclick="closeModal('edit-folder-modal')" class="px-4 py-2 bg-zinc-800 text-white rounded-xl font-bold">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl">Apply</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ROW-ISOLATED SUPPLIER QUOTES (PAPERCLIP DRAWER) -->
+  <div id="quotes-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
+    <div class="card-glass rounded-2xl max-w-lg w-full p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-paperclip text-red-500"></i> Row Supplier Quotes
+          </h2>
+          <p id="quotes-modal-subtitle" class="text-[11px] text-zinc-400 mt-0.5">Row-isolated attachments</p>
+        </div>
+        <button onclick="closeModal('quotes-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="bg-zinc-900/90 border border-dashed border-zinc-700 rounded-xl p-4 text-center space-y-2">
+        <label class="cursor-pointer inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow transition">
+          <i class="fa-solid fa-cloud-arrow-up"></i> Upload Supplier Quote(s) (PDF / Image)
+          <input type="file" id="row-quote-upload-input" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" onchange="handleRowQuoteUpload(this.files)" class="hidden">
+        </label>
+        <p id="quote-upload-status" class="text-[11px] text-zinc-400">Attach multiple competing supplier quotes to this specific line item only.</p>
+      </div>
+
+      <div id="row-quotes-list" class="space-y-2 max-h-64 overflow-y-auto text-xs"></div>
+
+      <div class="flex justify-end pt-2 border-t border-zinc-800">
+        <button onclick="closeModal('quotes-modal')" class="px-4 py-2 bg-zinc-800 text-white rounded-xl text-xs font-bold">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ROW CHAT BUBBLE COMMENTS -->
+  <div id="row-comment-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
+    <div class="card-glass rounded-2xl max-w-lg w-full p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-regular fa-comment-dots text-red-500"></i> Line Item Discussion & Notes
+          </h2>
+          <p id="comment-modal-subtitle" class="text-[11px] text-zinc-400 mt-0.5"></p>
+        </div>
+        <button onclick="closeModal('row-comment-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div id="row-comments-thread" class="space-y-2 max-h-60 overflow-y-auto text-xs"></div>
+
+      <div class="space-y-2 pt-2 border-t border-zinc-800">
+        <textarea id="new-row-comment-text" rows="2" placeholder="Add a note or type @Boss to notify for approval..." class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white focus:border-red-500 focus:outline-none"></textarea>
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] text-zinc-400">Tip: Include <strong class="text-red-400">@Boss</strong> to trigger a 30-day tag + email alert.</span>
+          <button onclick="addRowComment()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow">Post Note</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: COMMERCIAL PILL EDITOR (INCLUSIONS, EXCLUDES, SOW, TERMS) -->
+  <div id="pill-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
+    <div class="card-glass rounded-2xl max-w-lg w-full p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-tag text-red-500"></i> <span id="pill-modal-title">Commercial Note</span>
+        </h2>
+        <button onclick="closeModal('pill-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">PILL LABEL (e.g. INCLUSIONS, SOW, EXCLUDES, LEAD TIME)</label>
+          <input type="text" id="pill-label-input" class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-bold uppercase">
+        </div>
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">DETAILS / LIST ITEMS (One per line)</label>
+          <textarea id="pill-content-input" rows="7" placeholder="Enter scope items, inclusions, exclusions, or payment terms..." class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white leading-relaxed"></textarea>
+        </div>
+        <div class="flex justify-between items-center pt-2 border-t border-zinc-800">
+          <button type="button" id="btn-delete-pill" onclick="deleteActivePill()" class="text-red-400 hover:text-red-300 font-bold px-2 py-1"><i class="fa-solid fa-trash-can mr-1"></i> Remove Pill</button>
+          <div class="flex gap-2">
+            <button type="button" onclick="closeModal('pill-modal')" class="px-4 py-2 bg-zinc-800 text-white rounded-xl font-bold">Cancel</button>
+            <button type="button" onclick="saveActivePill()" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow">Save Note</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SAVE AS REUSABLE TEMPLATE -->
+  <div id="save-template-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
+    <div class="card-glass rounded-2xl max-w-md w-full p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
+        <h2 class="text-base font-bold text-sky-300 flex items-center gap-2"><i class="fa-solid fa-layer-group"></i> Save Current Structure as Template</h2>
+        <button onclick="closeModal('save-template-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitSaveTemplate(event)" class="space-y-3 text-xs">
+        <p class="text-zinc-400">Saves the current rows, categories, markup %, and commercial labels (stripping quote attachments) so estimators can reuse this layout on future projects.</p>
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">NEW TEMPLATE NAME *</label>
+          <input type="text" id="template-name-input" required placeholder="e.g. ALLCON TROMMEL ESTIMATE V2" class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-bold uppercase">
+        </div>
+        <div id="existing-templates-list" class="space-y-1.5 max-h-40 overflow-y-auto pt-1"></div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-zinc-800">
+          <button type="button" onclick="closeModal('save-template-modal')" class="px-4 py-2 bg-zinc-800 text-white rounded-xl font-bold">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl shadow">Save Template</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TAG / NOTIFY USER (30-DAY PERSISTENT + EMAIL) -->
+  <div id="tag-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
+    <div class="card-glass rounded-2xl max-w-md w-full p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
+        <h2 class="text-base font-bold text-white flex items-center gap-2"><i class="fa-solid fa-at text-red-500"></i> Tag User for Review / Approval</h2>
+        <button onclick="closeModal('tag-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitTagNotification(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">SELECT USER TO TAG (@MENTION)</label>
+          <select id="tag-target-user" class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-amber-300 font-bold"></select>
+        </div>
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">MESSAGE *</label>
+          <textarea id="tag-message-input" rows="3" required placeholder="e.g. @Boss - Estimate complete and supplier quotes attached. Please approve." class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white"></textarea>
+        </div>
+        <p class="text-[11px] text-zinc-400">Sends an immediate email alert and keeps this notification pinned on the site for <strong>30 days</strong>.</p>
+        <div class="flex justify-end gap-2 pt-2 border-t border-zinc-800">
+          <button type="button" onclick="closeModal('tag-modal')" class="px-4 py-2 bg-zinc-800 text-white rounded-xl font-bold">Cancel</button>
+          <button type="submit" id="btn-send-tag" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow">Send @Tag Alert</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: 30-DAY ACTIVE NOTIFICATIONS DRAWER -->
+  <div id="notifications-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
+    <div class="card-glass rounded-2xl max-w-xl w-full p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2"><i class="fa-solid fa-bell text-amber-400"></i> 30-Day Active @Tag Approvals</h2>
+          <p class="text-[11px] text-zinc-400">All @tags stay visible for 30 days so periodic approvals are never missed.</p>
+        </div>
+        <button onclick="closeModal('notifications-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="notifications-list" class="space-y-2 max-h-80 overflow-y-auto text-xs"></div>
+      <div class="flex justify-end pt-2 border-t border-zinc-800">
+        <button onclick="closeModal('notifications-modal')" class="px-4 py-2 bg-zinc-800 text-white rounded-xl text-xs font-bold">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADMIN USERS -->
+  <div id="admin-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
+    <div class="card-glass rounded-2xl max-w-lg w-full p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
+        <h2 class="text-base font-bold text-amber-400"><i class="fa-solid fa-users-gear mr-1"></i> Estimating Users & Approvers</h2>
+        <button onclick="closeModal('admin-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="handleAddUser(event)" class="grid grid-cols-2 gap-2 text-xs bg-zinc-900 p-3 rounded-xl">
+        <input type="text" id="new-u-name" required placeholder="Username (e.g. Boss)" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white">
+        <input type="text" id="new-u-pass" required placeholder="Password" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white">
+        <select id="new-u-role" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white font-bold">
+          <option value="ESTIMATOR">ESTIMATOR</option>
+          <option value="APPROVER">APPROVER (BOSS)</option>
+          <option value="ADMIN">ADMIN</option>
+        </select>
+        <input type="email" id="new-u-email" required placeholder="Email for @Tag Alerts" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white">
+        <button type="submit" class="col-span-2 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg">Add User</button>
+      </form>
+      <div id="users-list" class="space-y-2 max-h-56 overflow-y-auto text-xs"></div>
+    </div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyT0CjECOsrAY-z6SrKwZC3BMpS9NzMsGYVK6-xz2iy8gaNL1-n9xnA3Crnz2aiuRwQ/exec";
+    const SUPABASE_URL = "https://cksqvmmubwoicfiutodw.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_SD3v-M_VxFMJRO_8iKJk-A_4-14jQpK";
+    const SUPABASE_BUCKET = "supplier-quotes";
+
+    let allEstimates = [];
+    let allTemplates = [];
+    let allNotifications = [];
+    let allUsers = [];
+    let currentUser = null;
+    let activeEstimate = null;
+    let activeModalRowId = null;
+    let activePillIndex = -1;
+    let collapsedFolders = new Set();
+
+    // BUILT-IN DEFAULT ALLCON TEMPLATE (MATCHING SMARTSHEET SCREENSHOTS)
+    function getBuiltInDefaultTemplate() {
+      const uid = () => "R-" + Math.random().toString(36).substring(2, 9);
+      return {
+        id: "BUILTIN-ALLCON-STD",
+        templateName: "ALLCON STANDARD FABRICATION TEMPLATE",
+        rows: [
+          { id: uid(), type: "group", category: "MATERIAL", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "MATERIAL PLATE", notes: "GENESIS - ALLCON STOCK - FAST FLAME", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "PLASMA CUTTING", notes: "ALLCON AFRICA", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "ANGLE IRON", notes: "MACSTEEL - S&P - S & L", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "BEAMS", notes: "MACSTEEL - S&P - S & L", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "PIPE", notes: "MACSTEEL - S&P - S & L", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "FLANGES", notes: "MACSTEEL - M.P.S", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "O-RING CHORD", notes: "FAST FLAME", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "group", category: "ROLLING", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "ROLLING ANGLE / PLATE", notes: "ALLCON - ACTIVE ROLLING - ROLLFAB", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "group", category: "THERMAL STRESS RELIEVE", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "STRESS RELIEVE", notes: "NJM", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "group", category: "MACHINE PRICES", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "MACHINING LARGE ITEMS", notes: "DABARESA - RUVIS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "MACHINING SMALL ITEMS", notes: "DABARESA - RUVIS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "group", category: "GASKETS", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "NEOPRENE", notes: "CUSTOM SEALS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "BUTYL", notes: "CUSTOM SEALS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "group", category: "FASTENERS AS PER BOLT LIST", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "FASTENERS", notes: "IMPACT BOLTS - VERBOLT", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "group", category: "TRANSPORT", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "TRANSPORT ROLLINGS COLLECT/DEL", notes: "SUPPLIER DELIVER - SHEPHERD COLLECT", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "TRANSPORT M/C COLLECT/DEL", notes: "SHEPHERD", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "TRANSPORT STRESS RELIEVE", notes: "SHEPHERD", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "group", category: "NON DESTRUCTIVE TESTING", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "NDT", notes: "SPECTRA", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "NDT CONSUMABLES", notes: "ALTEZ", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "group", category: "CONSUMABLES", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "AS NEEDED", notes: "VARIOUS SUPPLIERS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "WELDING WIRE", notes: "", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "WELDING GAS", notes: "", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "LPG GAS", notes: "", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "group", category: "PAINT", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "BLASTING SA 2.5", notes: "ALLCON", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "PRIMER (AS PER SPEC)", notes: "STONCOR - JOTUN - INTER B&A PAINTS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "INTERMEDIATE (AS PER SPEC)", notes: "STONCOR - JOTUN - INTER B&A PAINTS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "FINAL COAT (AS PER SPEC)", notes: "STONCOR - JOTUN - INTER B&A PAINTS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "group", category: "MANUFACTURING LABOUR", notes: "HOURS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "FABRICATION", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "STRAIGHTEN", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "WELDING", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "ASSEMBLY", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "DISASSEMBLY", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "HANDLING", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "GRINDING", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "group", category: "ADMIN COST", notes: "HOURS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "ESTIMATING", notes: "1", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "QCQA", notes: "2", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "ADMIN", notes: "2", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "PROCUREMENT", notes: "1", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "group", category: "DRAWINGS", notes: "", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "ENQUIRY DRAWINGS", notes: "1", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "MANUFACTURE DRAWINGS", notes: "", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "REV00 DRAWINGS", notes: "", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+
+          { id: uid(), type: "standalone", category: "MACHINING (OUTSOURCED)", notes: "", ref: "", cost: 0, markup: 20, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "standalone", category: "RUBBER LINING", notes: "", ref: "", cost: 0, markup: 20, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "standalone", category: "PACKAGING", notes: "", ref: "", cost: 0, markup: 0, status: "", quotes: [], comments: [] }
+        ],
+        commercialTags: [
+          { label: "INCLUSIONS", content: "Labour\nMaterial\nFabrication\nStress Relieve\nNDT\nDrilling\nMachining\nRubber Lining\nSand Blast SA2.5\nPrimer: Carboguard 880\nFinal: Carbothane 134\nPackaging" },
+          { label: "EXCLUDES", content: "Transport\nFasteners\nHandling" },
+          { label: "LEAD TIME", content: "Fabrication: 10 Weeks from Receipt of Official Order, Rev 00 Drawings, Signed QCP & Deposit\nMachining: 1 Week from Receipt of Official Order & Rev 00 Drawings\nRubber Lining: 1 Week from Receipt of Official Order & Rev 00 Drawings" },
+          { label: "PAYMENT TERMS", content: "50% Deposit\n40% On Completion Of Fabrication\n10% On Completion" }
+        ]
+      };
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatZar(num) {
+      return "R " + Number(num || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    // ================= DATA SYNC & AUTH =================
+    async function loadAllData(manual = false) {
+      if (manual) document.getElementById('sync-indicator').innerHTML = `<i class="fa-solid fa-spinner fa-spin text-amber-400"></i> Syncing...`;
+      try {
+        const res = await fetch(`${SCRIPT_URL}?t=${Date.now()}`);
+        const json = await res.json();
+        allEstimates = json.estimates || [];
+        allTemplates = [getBuiltInDefaultTemplate(), ...(json.templates || [])];
+        allNotifications = json.notifications || [];
+        allUsers = json.users || [];
+
+        document.getElementById('est-count-label').innerText = `${allEstimates.length} Estimate${allEstimates.length === 1 ? '' : 's'}`;
+        document.getElementById('notif-badge').innerText = allNotifications.length;
+
+        if (!activeEstimate) {
+          if (allEstimates.length > 0) {
+            activeEstimate = JSON.parse(JSON.stringify(allEstimates[allEstimates.length - 1]));
+          } else {
+            const tpl = getBuiltInDefaultTemplate();
+            activeEstimate = {
+              id: "EST-" + Date.now(),
+              clientFolder: "MITTAL",
+              subFolder: "ESKOM",
+              estimateName: "NEW SAMPLE ESTIMATE",
+              approvalStatus: "DRAFT",
+              createdBy: currentUser ? currentUser.username : "Estimator",
+              totalKg: 0,
+              rows: tpl.rows,
+              commercialTags: tpl.commercialTags
+            };
+          }
+        } else {
+          const fresh = allEstimates.find(e => e.id === activeEstimate.id);
+          if (fresh && manual) activeEstimate = JSON.parse(JSON.stringify(fresh));
+        }
+
+        renderFolderTree();
+        renderActiveEstimate();
+        renderUsersList();
+        document.getElementById('sync-indicator').innerHTML = `<i class="fa-solid fa-circle text-[7px] text-emerald-500"></i> Synced`;
+      } catch (e) {
+        console.error(e);
+        document.getElementById('sync-indicator').innerHTML = `<i class="fa-solid fa-circle text-[7px] text-red-500"></i> Offline`;
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const btn = document.getElementById('login-btn');
+      btn.innerText = "Signing in...";
+      btn.disabled = true;
+
+      if (allUsers.length === 0) await loadAllData(false);
+
+      const uInput = document.getElementById('login-user').value.trim().toLowerCase();
+      const pInput = document.getElementById('login-pass').value.trim();
+      const matched = allUsers.find(u => u.username.toLowerCase() === uInput && u.password === pInput);
+
+      if (matched) {
+        currentUser = matched;
+        sessionStorage.setItem('allcon_est_user', JSON.stringify(matched));
+        applyUserRoleUI();
+        document.getElementById('login-screen').classList.add('hidden');
+        renderFolderTree();
+        renderActiveEstimate();
+      } else {
+        document.getElementById('login-error').classList.remove('hidden');
+      }
+      btn.innerText = "Sign In";
+      btn.disabled = false;
+    }
+
+    function applyUserRoleUI() {
+      document.getElementById('header-username').innerText = currentUser.username;
+      document.getElementById('header-role').innerText = currentUser.role;
+      if (currentUser.role === 'ADMIN' || currentUser.role === 'APPROVER') {
+        document.getElementById('btn-admin-panel').classList.remove('hidden');
+      }
+    }
+
+    function logout() {
+      sessionStorage.removeItem('allcon_est_user');
+      location.reload();
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const saved = sessionStorage.getItem('allcon_est_user');
+      await loadAllData(false);
+      if (saved) {
+        currentUser = JSON.parse(saved);
+        applyUserRoleUI();
+        document.getElementById('login-screen').classList.add('hidden');
+        renderFolderTree();
+        renderActiveEstimate();
+      }
+    });
+
+    // ================= FOLDER HIERARCHY TREE =================
+    function toggleFolderNode(key) {
+      if (collapsedFolders.has(key)) collapsedFolders.delete(key);
+      else collapsedFolders.add(key);
+      renderFolderTree();
+    }
+
+    function selectEstimate(id) {
+      const found = allEstimates.find(e => e.id === id);
+      if (!found) return;
+      activeEstimate = JSON.parse(JSON.stringify(found));
+      renderFolderTree();
+      renderActiveEstimate();
+    }
+
+    function renderFolderTree() {
+      const container = document.getElementById('folder-tree-container');
+      const q = (document.getElementById('folder-search').value || "").trim().toLowerCase();
+
+      const tree = {};
+      allEstimates.forEach(est => {
+        const c = (est.clientFolder || "GENERAL").toUpperCase();
+        const s = (est.subFolder || "GENERAL").toUpperCase();
+        const matches = !q || c.toLowerCase().includes(q) || s.toLowerCase().includes(q) || est.estimateName.toLowerCase().includes(q);
+        if (!matches) return;
+        if (!tree[c]) tree[c] = {};
+        if (!tree[c][s]) tree[c][s] = [];
+        tree[c][s].push(est);
+      });
+
+      const clients = Object.keys(tree).sort();
+      if (clients.length === 0) {
+        container.innerHTML = `<div class="text-zinc-500 text-center py-6">No saved estimates match. Click <strong>New Estimate</strong> to start one.</div>`;
+        return;
+      }
+
+      container.innerHTML = clients.map(client => {
+        const clientKey = `C:${client}`;
+        const clientCollapsed = collapsedFolders.has(clientKey);
+        const subFolders = Object.keys(tree[client]).sort();
+
+        return `
+          <div class="border border-zinc-800/80 rounded-xl bg-zinc-900/50 overflow-hidden">
+            <button type="button" onclick="toggleFolderNode('${escapeHtml(clientKey)}')" class="w-full px-2.5 py-2 flex items-center justify-between text-left bg-zinc-800/60 hover:bg-zinc-800 font-black text-amber-400">
+              <span class="flex items-center gap-1.5 truncate">
+                <i class="fa-solid ${clientCollapsed ? 'fa-folder' : 'fa-folder-open'} text-amber-400"></i>
+                <span class="truncate">${escapeHtml(client)}</span>
+              </span>
+              <i class="fa-solid ${clientCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-[10px] text-zinc-400"></i>
+            </button>
+            ${clientCollapsed ? '' : `
+              <div class="p-1.5 space-y-1">
+                ${subFolders.map(sub => {
+                  const subKey = `S:${client}:${sub}`;
+                  const subCollapsed = collapsedFolders.has(subKey);
+                  const estList = tree[client][sub];
+                  return `
+                    <div class="pl-2 border-l border-zinc-700/80">
+                      <button type="button" onclick="toggleFolderNode('${escapeHtml(subKey)}')" class="w-full px-2 py-1 flex items-center justify-between text-left hover:bg-zinc-800/60 rounded font-bold text-sky-300">
+                        <span class="flex items-center gap-1.5 truncate">
+                          <i class="fa-solid ${subCollapsed ? 'fa-folder' : 'fa-folder-open'} text-sky-400 text-[11px]"></i>
+                          <span class="truncate">${escapeHtml(sub)}</span>
+                          <span class="text-[10px] text-zinc-500">(${estList.length})</span>
+                        </span>
+                        <i class="fa-solid ${subCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-[9px] text-zinc-500"></i>
+                      </button>
+                      ${subCollapsed ? '' : `
+                        <div class="pl-3 mt-1 space-y-1">
+                          ${estList.map(est => {
+                            const isActive = activeEstimate && activeEstimate.id === est.id;
+                            return `
+                              <button type="button" onclick="selectEstimate('${est.id}')" class="w-full px-2 py-1.5 rounded-lg text-left flex items-center justify-between gap-1 transition ${isActive ? 'bg-red-600 text-white font-bold shadow' : 'hover:bg-zinc-800 text-zinc-300'}">
+                                <span class="truncate flex items-center gap-1.5">
+                                  <i class="fa-solid fa-table-cells text-[10px] ${isActive ? 'text-white' : 'text-zinc-500'}"></i>
+                                  <span class="truncate">${escapeHtml(est.estimateName)}</span>
+                                </span>
+                                ${est.approvalStatus === 'APPROVED' ? `<i class="fa-solid fa-circle-check text-emerald-300 text-[10px] shrink-0" title="Approved"></i>` : ''}
+                              </button>
+                            `;
+                          }).join('')}
+                        </div>
+                      `}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `}
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ================= ACTIVE ESTIMATE RENDERING & INDEPENDENT ROW MATH =================
+    function computeGroupSubtotals(rows) {
+      const groupTotals = {};
+      let currentGroupId = null;
+
+      rows.forEach(r => {
+        if (r.type === 'group') {
+          currentGroupId = r.id;
+          groupTotals[currentGroupId] = { cost: 0, sell: 0 };
+        } else if (r.type === 'item' && currentGroupId) {
+          const c = Number(r.cost) || 0;
+          const m = Number(r.markup) || 0;
+          const s = c * (1 + m / 100);
+          groupTotals[currentGroupId].cost += c;
+          groupTotals[currentGroupId].sell += s;
+        } else if (r.type === 'standalone') {
+          currentGroupId = null;
+        }
+      });
+      return groupTotals;
+    }
+
+    function renderActiveEstimate() {
+      if (!activeEstimate) return;
+
+      document.getElementById('crumb-client').innerText = activeEstimate.clientFolder || "GENERAL";
+      document.getElementById('crumb-subfolder').innerText = activeEstimate.subFolder || "GENERAL";
+      document.getElementById('active-est-name').value = activeEstimate.estimateName || "";
+      document.getElementById('active-est-status').value = activeEstimate.approvalStatus || "DRAFT";
+      document.getElementById('active-est-kg').value = activeEstimate.totalKg || 0;
+
+      renderCommercialPills();
+
+      const tbody = document.getElementById('estimate-grid-body');
+      const rows = activeEstimate.rows || [];
+      const groupTotals = computeGroupSubtotals(rows);
+
+      let grandCost = 0;
+      let grandSell = 0;
+
+      rows.forEach(r => {
+        if (r.type !== 'group') {
+          const c = Number(r.cost) || 0;
+          const m = Number(r.markup) || 0;
+          grandCost += c;
+          grandSell += c * (1 + m / 100);
+        }
+      });
+
+      const marginVal = grandSell - grandCost;
+      const marginPct = grandCost > 0 ? ((marginVal / grandCost) * 100).toFixed(1) : "0.0";
+      const totalKg = Number(activeEstimate.totalKg) || 0;
+      const ratePerKg = totalKg > 0 ? (grandSell / totalKg) : 0;
+
+      document.getElementById('kpi-total-cost').innerText = formatZar(grandCost);
+      document.getElementById('kpi-total-sell').innerText = formatZar(grandSell);
+      document.getElementById('kpi-margin').innerText = `${formatZar(marginVal)} (${marginPct}%)`;
+      document.getElementById('kpi-rate-kg').innerText = `R ${ratePerKg.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / kg`;
+
+      tbody.innerHTML = rows.map((row, idx) => {
+        const isGroup = row.type === 'group';
+        const isStandalone = row.type === 'standalone';
+        const quoteCount = (row.quotes || []).length;
+        const commentCount = (row.comments || []).length;
+
+        const rowCost = isGroup ? (groupTotals[row.id]?.cost || 0) : (Number(row.cost) || 0);
+        const rowMarkup = Number(row.markup) || 0;
+        const rowSell = isGroup ? (groupTotals[row.id]?.sell || 0) : (rowCost * (1 + rowMarkup / 100));
+
+        let rowBgClass = "bg-zinc-900/40 hover:bg-zinc-800/40";
+        if (isGroup) rowBgClass = "bg-sky-950/60 border-y border-sky-800/60 font-black";
+        if (isStandalone) rowBgClass = "bg-amber-950/35 border-y border-amber-700/40 font-bold";
+
+        return `
+          <tr class="${rowBgClass}">
+            <td class="py-1.5 px-2 text-center text-[11px] font-mono text-zinc-500">${idx + 1}</td>
+
+            <!-- ROW-ISOLATED PAPERCLIP + CHAT BUBBLE -->
+            <td class="py-1.5 px-2 text-center">
+              <div class="inline-flex items-center gap-2">
+                <button type="button" onclick="openQuotesModal('${row.id}')" class="relative p-1 rounded hover:bg-zinc-800 transition ${quoteCount > 0 ? 'text-red-500' : 'text-zinc-400 hover:text-zinc-200'}" title="${quoteCount > 0 ? quoteCount + ' Supplier Quote(s) Attached' : 'Attach Supplier Quote'}">
+                  <i class="fa-solid fa-paperclip text-sm"></i>
+                  ${quoteCount > 0 ? `<span class="ml-0.5 text-[10px] font-black text-red-400">${quoteCount}</span>` : ''}
+                </button>
+                <button type="button" onclick="openRowCommentModal('${row.id}')" class="relative p-1 rounded hover:bg-zinc-800 transition ${commentCount > 0 ? 'text-sky-400' : 'text-zinc-500 hover:text-zinc-200'}" title="Line Comments">
+                  <i class="fa-regular fa-comment-dots text-sm"></i>
+                  ${commentCount > 0 ? `<span class="ml-0.5 text-[10px] font-black text-sky-300">${commentCount}</span>` : ''}
+                </button>
+              </div>
+            </td>
+
+            <!-- CATEGORY & ITEM -->
+            <td class="py-1 px-2 ${!isGroup && !isStandalone ? 'pl-6' : ''}">
+              <input type="text" value="${escapeHtml(row.category)}" onchange="updateRowField('${row.id}', 'category', this.value)" class="grid-cell-input uppercase ${isGroup ? 'text-sky-200 font-black' : isStandalone ? 'text-amber-300 font-black' : 'text-white font-semibold'}">
+            </td>
+
+            <!-- SUPPLIER / NOTES -->
+            <td class="py-1 px-2">
+              <input type="text" value="${escapeHtml(row.notes)}" onchange="updateRowField('${row.id}', 'notes', this.value)" class="grid-cell-input text-zinc-300">
+            </td>
+
+            <!-- SUPPLIER REF -->
+            <td class="py-1 px-2">
+              <input type="text" value="${escapeHtml(row.ref)}" onchange="updateRowField('${row.id}', 'ref', this.value)" placeholder="Ref" class="grid-cell-input text-zinc-400">
+            </td>
+
+            <!-- SUPPLIER QUOTED (R) -->
+            <td class="py-1 px-2 text-right font-mono">
+              ${isGroup
+                ? `<span class="px-2 py-1 text-sky-200 font-black">${formatZar(rowCost)}</span>`
+                : `<input type="number" step="0.01" value="${rowCost}" onchange="updateRowNumeric('${row.id}', 'cost', this.value)" class="grid-cell-input text-right font-bold text-white">`
+              }
+            </td>
+
+            <!-- MARKUP % -->
+            <td class="py-1 px-2 text-right font-mono">
+              ${isGroup
+                ? `<span class="text-zinc-500 text-[10px]">GROUP</span>`
+                : `<div class="flex items-center justify-end gap-0.5">
+                     <input type="number" step="0.5" value="${rowMarkup}" onchange="updateRowNumeric('${row.id}', 'markup', this.value)" class="grid-cell-input text-right font-bold text-amber-300 w-16">
+                     <span class="text-zinc-500">%</span>
+                   </div>`
+              }
+            </td>
+
+            <!-- ALLCON ESTIMATE (R) -->
+            <td class="py-1.5 px-2 text-right font-mono font-black ${isGroup ? 'text-sky-200' : isStandalone ? 'text-amber-300' : 'text-emerald-400'}">
+              ${formatZar(rowSell)}
+            </td>
+
+            <!-- STATUS -->
+            <td class="py-1 px-2">
+              <select onchange="updateRowField('${row.id}', 'status', this.value)" class="grid-cell-input text-[11px] font-bold bg-zinc-900 text-zinc-300">
+                <option value="" ${!row.status ? 'selected' : ''}>--</option>
+                <option value="QUOTED" ${row.status === 'QUOTED' ? 'selected' : ''}>QUOTED</option>
+                <option value="PENDING" ${row.status === 'PENDING' ? 'selected' : ''}>PENDING</option>
+                <option value="ESTIMATE" ${row.status === 'ESTIMATE' ? 'selected' : ''}>ESTIMATE</option>
+                <option value="APPROVED" ${row.status === 'APPROVED' ? 'selected' : ''}>APPROVED</option>
+              </select>
+            </td>
+
+            <!-- ROW MOVE / DELETE -->
+            <td class="py-1 px-2 text-center">
+              <div class="inline-flex items-center gap-1 text-zinc-500">
+                <button type="button" onclick="moveRow(${idx}, -1)" class="hover:text-white p-1" title="Move Up"><i class="fa-solid fa-chevron-up text-[10px]"></i></button>
+                <button type="button" onclick="moveRow(${idx}, 1)" class="hover:text-white p-1" title="Move Down"><i class="fa-solid fa-chevron-down text-[10px]"></i></button>
+                <button type="button" onclick="deleteRow('${row.id}')" class="hover:text-red-400 p-1" title="Delete Row"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function updateEstimateMeta(field, val) {
+      if (!activeEstimate) return;
+      activeEstimate[field] = String(val || "").toUpperCase().trim();
+      renderFolderTree();
+    }
+
+    function updateEstimateKg(val) {
+      if (!activeEstimate) return;
+      activeEstimate.totalKg = parseFloat(val) || 0;
+      renderActiveEstimate();
+    }
+
+    function updateRowField(rowId, field, val) {
+      const row = activeEstimate.rows.find(r => r.id === rowId);
+      if (!row) return;
+      row[field] = val;
+    }
+
+    function updateRowNumeric(rowId, field, val) {
+      const row = activeEstimate.rows.find(r => r.id === rowId);
+      if (!row) return;
+      row[field] = parseFloat(val) || 0;
+      renderActiveEstimate();
+    }
+
+    function addRow(type) {
+      if (!activeEstimate) return;
+      activeEstimate.rows.push({
+        id: "R-" + Date.now() + "-" + Math.random().toString(36).substring(2, 5),
+        type,
+        category: type === 'group' ? "NEW SECTION GROUP" : type === 'standalone' ? "BUYOUT ITEM" : "NEW LINE ITEM",
+        notes: "",
+        ref: "",
+        cost: 0,
+        markup: type === 'standalone' ? 20 : 12,
+        status: "",
+        quotes: [],
+        comments: []
+      });
+      renderActiveEstimate();
+    }
+
+    function moveRow(idx, dir) {
+      const target = idx + dir;
+      if (target < 0 || target >= activeEstimate.rows.length) return;
+      const temp = activeEstimate.rows[idx];
+      activeEstimate.rows[idx] = activeEstimate.rows[target];
+      activeEstimate.rows[target] = temp;
+      renderActiveEstimate();
+    }
+
+    function deleteRow(rowId) {
+      activeEstimate.rows = activeEstimate.rows.filter(r => r.id !== rowId);
+      renderActiveEstimate();
+    }
+
+    // ================= COMMERCIAL TAG PILLS (INCLUSIONS, EXCLUDES, SOW, TERMS) =================
+    function renderCommercialPills() {
+      const container = document.getElementById('commercial-pills-container');
+      const tags = activeEstimate.commercialTags || [];
+      container.innerHTML = tags.map((t, idx) => `
+        <button type="button" onclick="openEditPillModal(${idx})" class="text-[11px] font-extrabold bg-zinc-800 hover:bg-red-600/20 text-zinc-200 hover:text-red-300 border border-zinc-700 hover:border-red-500/50 px-3 py-1 rounded-full transition flex items-center gap-1.5">
+          <i class="fa-solid fa-file-lines text-red-500 text-[10px]"></i>
+          <span>${escapeHtml(t.label)}</span>
+        </button>
+      `).join('');
+    }
+
+    function openAddCommercialPillModal() {
+      activePillIndex = -1;
+      document.getElementById('pill-modal-title').innerText = "Add Named Commercial Note Pill";
+      document.getElementById('pill-label-input').value = "SOW";
+      document.getElementById('pill-content-input').value = "";
+      document.getElementById('btn-delete-pill').classList.add('hidden');
+      document.getElementById('pill-modal').classList.remove('hidden');
+    }
+
+    function openEditPillModal(idx) {
+      const pill = activeEstimate.commercialTags[idx];
+      if (!pill) return;
+      activePillIndex = idx;
+      document.getElementById('pill-modal-title').innerText = `Edit ${pill.label}`;
+      document.getElementById('pill-label-input').value = pill.label;
+      document.getElementById('pill-content-input').value = pill.content || "";
+      document.getElementById('btn-delete-pill').classList.remove('hidden');
+      document.getElementById('pill-modal').classList.remove('hidden');
+    }
+
+    function saveActivePill() {
+      const label = (document.getElementById('pill-label-input').value || "NOTE").toUpperCase().trim();
+      const content = document.getElementById('pill-content-input').value;
+      if (!activeEstimate.commercialTags) activeEstimate.commercialTags = [];
+
+      if (activePillIndex >= 0) {
+        activeEstimate.commercialTags[activePillIndex] = { label, content };
+      } else {
+        activeEstimate.commercialTags.push({ label, content });
+      }
+      renderCommercialPills();
+      closeModal('pill-modal');
+    }
+
+    function deleteActivePill() {
+      if (activePillIndex >= 0) {
+        activeEstimate.commercialTags.splice(activePillIndex, 1);
+        renderCommercialPills();
+      }
+      closeModal('pill-modal');
+    }
+
+    // ================= ROW-ISOLATED SUPPLIER QUOTES (SUPABASE STORAGE) =================
+    function openQuotesModal(rowId) {
+      const row = activeEstimate.rows.find(r => r.id === rowId);
+      if (!row) return;
+      activeModalRowId = rowId;
+      document.getElementById('quotes-modal-subtitle').innerText = `Line Item: ${row.category}`;
+      document.getElementById('quote-upload-status').innerText = "Attach multiple competing supplier quotes to this specific line item only.";
+      renderRowQuotesList(row);
+      document.getElementById('quotes-modal').classList.remove('hidden');
+    }
+
+    function renderRowQuotesList(row) {
+      const container = document.getElementById('row-quotes-list');
+      const quotes = row.quotes || [];
+      if (quotes.length === 0) {
+        container.innerHTML = `<div class="text-zinc-500 text-center py-6">No supplier quotes uploaded for this row yet.</div>`;
+        return;
+      }
+      container.innerHTML = quotes.map((q, idx) => `
+        <div class="p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="font-bold text-white truncate"><i class="fa-solid fa-file-pdf text-red-500 mr-1.5"></i>${escapeHtml(q.name)}</div>
+            <div class="text-[10px] text-zinc-400">Uploaded ${escapeHtml(q.uploadedAt || '')} by ${escapeHtml(q.uploadedBy || 'Estimator')}</div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <a href="${q.url}" target="_blank" class="bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/40 px-2.5 py-1 rounded-lg font-bold">Open</a>
+            <button type="button" onclick="removeRowQuote(${idx})" class="text-zinc-500 hover:text-red-400 p-1" title="Remove from row"><i class="fa-solid fa-trash-can"></i></button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function handleRowQuoteUpload(fileList) {
+      if (!fileList || fileList.length === 0 || !activeModalRowId) return;
+      const row = activeEstimate.rows.find(r => r.id === activeModalRowId);
+      if (!row) return;
+      if (!row.quotes) row.quotes = [];
+
+      const statusEl = document.getElementById('quote-upload-status');
+      statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-amber-400"></i> Uploading ${fileList.length} quote file(s) to Supabase...`;
+
+      const cleanBaseUrl = SUPABASE_URL.replace(/\/+$/, "");
+
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const storagePath = `${activeEstimate.id}/${row.id}/${Date.now()}_${safeFileName}`;
+        const uploadEndpoint = `${cleanBaseUrl}/storage/v1/object/${SUPABASE_BUCKET}/${storagePath}`;
+        const publicUrl = `${cleanBaseUrl}/storage/v1/object/public/${SUPABASE_BUCKET}/${storagePath}`;
+
+        try {
+          const res = await fetch(uploadEndpoint, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${SUPABASE_KEY}`,
+              "apikey": SUPABASE_KEY,
+              "Content-Type": file.type || "application/octet-stream",
+              "x-upsert": "true"
+            },
+            body: file
+          });
+
+          if (res.ok) {
+            row.quotes.push({
+              name: file.name,
+              url: publicUrl,
+              uploadedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+              uploadedBy: currentUser ? currentUser.username : "Estimator"
+            });
+          } else {
+            const errTxt = await res.text();
+            alert("Quote upload failed: " + errTxt);
+          }
+        } catch (err) {
+          alert("Quote upload network error: " + err.message);
+        }
+      }
+
+      document.getElementById('row-quote-upload-input').value = "";
+      statusEl.innerText = "Upload complete! Paperclip updated to Allcon Red.";
+      renderRowQuotesList(row);
+      renderActiveEstimate();
+      await saveCurrentEstimate(false);
+    }
+
+    async function removeRowQuote(idx) {
+      const row = activeEstimate.rows.find(r => r.id === activeModalRowId);
+      if (!row || !row.quotes) return;
+      row.quotes.splice(idx, 1);
+      renderRowQuotesList(row);
+      renderActiveEstimate();
+      await saveCurrentEstimate(false);
+    }
+
+    // ================= ROW CHAT BUBBLE COMMENTS =================
+    function openRowCommentModal(rowId) {
+      const row = activeEstimate.rows.find(r => r.id === rowId);
+      if (!row) return;
+      activeModalRowId = rowId;
+      document.getElementById('comment-modal-subtitle').innerText = `Line Item: ${row.category}`;
+      document.getElementById('new-row-comment-text').value = "";
+      renderRowCommentsThread(row);
+      document.getElementById('row-comment-modal').classList.remove('hidden');
+    }
+
+    function renderRowCommentsThread(row) {
+      const container = document.getElementById('row-comments-thread');
+      const comments = row.comments || [];
+      if (comments.length === 0) {
+        container.innerHTML = `<div class="text-zinc-500 text-center py-4">No comments on this line item yet.</div>`;
+        return;
+      }
+      container.innerHTML = comments.map((c, idx) => `
+        <div class="p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl flex justify-between items-start gap-2">
+          <div>
+            <div class="text-[10px] font-bold text-amber-400">${escapeHtml(c.author)} <span class="text-zinc-500 font-mono ml-1">${escapeHtml(c.timestamp)}</span></div>
+            <div class="text-zinc-200 mt-0.5 break-words">${escapeHtml(c.text)}</div>
+          </div>
+          <button type="button" onclick="deleteRowComment(${idx})" class="text-zinc-500 hover:text-red-400 p-1"><i class="fa-solid fa-trash-can text-[11px]"></i></button>
+        </div>
+      `).join('');
+    }
+
+    async function addRowComment() {
+      const text = document.getElementById('new-row-comment-text').value.trim();
+      if (!text || !activeModalRowId) return;
+      const row = activeEstimate.rows.find(r => r.id === activeModalRowId);
+      if (!row) return;
+      if (!row.comments) row.comments = [];
+
+      const sender = currentUser ? currentUser.username : "Estimator";
+      row.comments.push({
+        author: sender,
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+        text
+      });
+
+      document.getElementById('new-row-comment-text').value = "";
+      renderRowCommentsThread(row);
+      renderActiveEstimate();
+      await saveCurrentEstimate(false);
+
+      // Detect @mentions inside comment and auto-trigger 30-day tag + email
+      const mentionMatches = text.match(/@([a-zA-Z0-9_.-]+)/g);
+      if (mentionMatches) {
+        for (const rawMention of mentionMatches) {
+          const targetName = rawMention.replace("@", "");
+          await sendTagNotificationPayload(targetName, text, row.category);
+        }
+      }
+    }
+
+    async function deleteRowComment(idx) {
+      const row = activeEstimate.rows.find(r => r.id === activeModalRowId);
+      if (!row || !row.comments) return;
+      row.comments.splice(idx, 1);
+      renderRowCommentsThread(row);
+      renderActiveEstimate();
+      await saveCurrentEstimate(false);
+    }
+
+    // ================= SAVE ESTIMATE / TEMPLATES / NEW ESTIMATE =================
+    async function saveCurrentEstimate(showFeedback = true) {
+      if (!activeEstimate) return;
+      const btn = document.getElementById('btn-save-est');
+      if (showFeedback) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+      }
+      document.getElementById('sync-indicator').innerHTML = `<i class="fa-solid fa-spinner fa-spin text-amber-400"></i> Saving...`;
+
+      let totalCost = 0, totalEstimate = 0;
+      (activeEstimate.rows || []).forEach(r => {
+        if (r.type !== 'group') {
+          const c = Number(r.cost) || 0;
+          const m = Number(r.markup) || 0;
+          totalCost += c;
+          totalEstimate += c * (1 + m / 100);
+        }
+      });
+      activeEstimate.totalCost = totalCost;
+      activeEstimate.totalEstimate = totalEstimate;
+
+      const existingIdx = allEstimates.findIndex(e => e.id === activeEstimate.id);
+      if (existingIdx >= 0) allEstimates[existingIdx] = JSON.parse(JSON.stringify(activeEstimate));
+      else allEstimates.push(JSON.parse(JSON.stringify(activeEstimate)));
+      renderFolderTree();
+
+      try {
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ action: "save_estimate", estimate: activeEstimate })
+        });
+        document.getElementById('sync-indicator').innerHTML = `<i class="fa-solid fa-circle text-[7px] text-emerald-500"></i> Synced`;
+      } catch (err) {
+        document.getElementById('sync-indicator').innerHTML = `<i class="fa-solid fa-circle text-[7px] text-red-500"></i> Save Failed`;
+      }
+
+      if (showFeedback) {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Estimate`;
+      }
+    }
+
+    async function deleteCurrentEstimate() {
+      if (!activeEstimate) return;
+      if (!confirm(`Delete estimate "${activeEstimate.estimateName}" permanently?`)) return;
+
+      const delId = activeEstimate.id;
+      allEstimates = allEstimates.filter(e => e.id !== delId);
+      activeEstimate = allEstimates.length > 0 ? JSON.parse(JSON.stringify(allEstimates[0])) : null;
+      renderFolderTree();
+      if (activeEstimate) renderActiveEstimate();
+
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "delete_estimate", id: delId })
+      });
+    }
+
+    function openNewEstimateModal() {
+      const clientList = [...new Set(allEstimates.map(e => e.clientFolder).filter(Boolean))];
+      const subList = [...new Set(allEstimates.map(e => e.subFolder).filter(Boolean))];
+      document.getElementById('client-folder-suggestions').innerHTML = clientList.map(c => `<option value="${escapeHtml(c)}">`).join('');
+      document.getElementById('subfolder-suggestions').innerHTML = subList.map(s => `<option value="${escapeHtml(s)}">`).join('');
+
+      document.getElementById('new-est-template').innerHTML = allTemplates.map(t => `<option value="${t.id}">${escapeHtml(t.templateName)}</option>`).join('');
+      document.getElementById('new-est-name').value = "";
+      document.getElementById('new-est-modal').classList.remove('hidden');
+    }
+
+    async function createNewEstimate(e) {
+      e.preventDefault();
+      const clientFolder = document.getElementById('new-est-client').value.toUpperCase().trim();
+      const subFolder = document.getElementById('new-est-subfolder').value.toUpperCase().trim();
+      const estimateName = document.getElementById('new-est-name').value.toUpperCase().trim();
+      const tplId = document.getElementById('new-est-template').value;
+
+      const tpl = allTemplates.find(t => t.id === tplId) || getBuiltInDefaultTemplate();
+      const clonedRows = JSON.parse(JSON.stringify(tpl.rows || [])).map(r => ({
+        ...r,
+        id: "R-" + Math.random().toString(36).substring(2, 9),
+        quotes: [],
+        comments: []
+      }));
+
+      activeEstimate = {
+        id: "EST-" + Date.now(),
+        clientFolder,
+        subFolder,
+        estimateName,
+        approvalStatus: "DRAFT",
+        createdBy: currentUser ? currentUser.username : "Estimator",
+        totalCost: 0,
+        totalEstimate: 0,
+        totalKg: 0,
+        rows: clonedRows,
+        commercialTags: JSON.parse(JSON.stringify(tpl.commercialTags || []))
+      };
+
+      closeModal('new-est-modal');
+      renderActiveEstimate();
+      await saveCurrentEstimate(true);
+    }
+
+    function openEditFolderModal() {
+      if (!activeEstimate) return;
+      document.getElementById('move-client').value = activeEstimate.clientFolder;
+      document.getElementById('move-subfolder').value = activeEstimate.subFolder;
+      document.getElementById('move-name').value = activeEstimate.estimateName;
+      document.getElementById('edit-folder-modal').classList.remove('hidden');
+    }
+
+    async function submitEditFolder(e) {
+      e.preventDefault();
+      activeEstimate.clientFolder = document.getElementById('move-client').value.toUpperCase().trim();
+      activeEstimate.subFolder = document.getElementById('move-subfolder').value.toUpperCase().trim();
+      activeEstimate.estimateName = document.getElementById('move-name').value.toUpperCase().trim();
+      closeModal('edit-folder-modal');
+      renderActiveEstimate();
+      await saveCurrentEstimate(true);
+    }
+
+    function openSaveTemplateModal() {
+      document.getElementById('template-name-input').value = "";
+      const savedCustom = allTemplates.filter(t => t.id !== "BUILTIN-ALLCON-STD");
+      document.getElementById('existing-templates-list').innerHTML = savedCustom.length
+        ? `<div class="text-[10px] font-bold text-zinc-400 uppercase mt-2">Saved Custom Templates:</div>` + savedCustom.map(t => `
+            <div class="flex justify-between items-center bg-zinc-900 px-2.5 py-1.5 rounded-lg border border-zinc-800">
+              <span class="font-bold text-zinc-200">${escapeHtml(t.templateName)}</span>
+              <button type="button" onclick="deleteTemplate('${t.id}')" class="text-zinc-500 hover:text-red-400"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+          `).join('')
+        : "";
+      document.getElementById('save-template-modal').classList.remove('hidden');
+    }
+
+    async function submitSaveTemplate(e) {
+      e.preventDefault();
+      const templateName = document.getElementById('template-name-input').value.toUpperCase().trim();
+      if (!templateName || !activeEstimate) return;
+
+      const cleanRows = (activeEstimate.rows || []).map(r => ({
+        ...r,
+        quotes: [],
+        comments: []
+      }));
+
+      const tplPayload = {
+        id: "TPL-" + Date.now(),
+        templateName,
+        createdBy: currentUser ? currentUser.username : "Estimator",
+        rows: cleanRows,
+        commercialTags: JSON.parse(JSON.stringify(activeEstimate.commercialTags || []))
+      };
+
+      allTemplates.push(tplPayload);
+      closeModal('save-template-modal');
+
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "save_template", template: tplPayload })
+      });
+      alert(`Template "${templateName}" saved!`);
+    }
+
+    async function deleteTemplate(id) {
+      allTemplates = allTemplates.filter(t => t.id !== id);
+      openSaveTemplateModal();
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "delete_template", id })
+      });
+    }
+
+    // ================= 30-DAY PERSISTENT @TAG NOTIFICATIONS =================
+    function openTagModal() {
+      const sel = document.getElementById('tag-target-user');
+      sel.innerHTML = allUsers.map(u => `<option value="${escapeHtml(u.username)}">@${escapeHtml(u.username)} (${escapeHtml(u.role)})</option>`).join('');
+      const bossUser = allUsers.find(u => u.username.toLowerCase() === 'boss' || u.role === 'APPROVER');
+      if (bossUser) sel.value = bossUser.username;
+      document.getElementById('tag-message-input').value = `@${sel.value} - Estimate complete and supplier quotes attached. Please review & approve.`;
+      document.getElementById('tag-modal').classList.remove('hidden');
+    }
+
+    async function sendTagNotificationPayload(targetUser, message, rowRef = "") {
+      const estimatePath = `${activeEstimate.clientFolder} > ${activeEstimate.subFolder} > ${activeEstimate.estimateName}`;
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: "create_notification",
+          targetUser,
+          sender: currentUser ? currentUser.username : "Estimator",
+          estimateId: activeEstimate.id,
+          estimatePath,
+          message,
+          rowRef,
+          appUrl: window.location.href
+        })
+      });
+      await loadAllData(false);
+    }
+
+    async function submitTagNotification(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-send-tag');
+      btn.disabled = true;
+      btn.innerText = "Sending Alert...";
+
+      const targetUser = document.getElementById('tag-target-user').value;
+      const message = document.getElementById('tag-message-input').value.trim();
+      await sendTagNotificationPayload(targetUser, message);
+
+      btn.disabled = false;
+      btn.innerText = "Send @Tag Alert";
+      closeModal('tag-modal');
+    }
+
+    function openNotificationsModal() {
+      const container = document.getElementById('notifications-list');
+      if (allNotifications.length === 0) {
+        container.innerHTML = `<div class="text-zinc-500 text-center py-6">No @tag notifications in the last 30 days.</div>`;
+      } else {
+        container.innerHTML = [...allNotifications].reverse().map(n => {
+          const created = new Date(n.createdAt);
+          const daysAgo = Math.max(0, Math.floor((Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)));
+          const daysLeft = Math.max(0, 30 - daysAgo);
+          return `
+            <div class="p-3 bg-zinc-900 border border-zinc-800 rounded-xl space-y-1.5">
+              <div class="flex justify-between items-center gap-2">
+                <span class="font-black text-red-400">@${escapeHtml(n.targetUser)} <span class="text-zinc-500 font-normal">tagged by</span> <strong class="text-white">${escapeHtml(n.sender)}</strong></span>
+                <span class="text-[10px] bg-zinc-800 text-amber-300 px-2 py-0.5 rounded font-bold">${daysLeft}d remaining</span>
+              </div>
+              <div class="text-[11px] font-bold text-sky-300">${escapeHtml(n.estimatePath)} ${n.rowRef ? `• [${escapeHtml(n.rowRef)}]` : ''}</div>
+              <div class="text-zinc-200">${escapeHtml(n.message)}</div>
+              <div class="flex justify-between items-center pt-1">
+                <span class="text-[10px] text-zinc-500 font-mono">${created.toLocaleString()}</span>
+                <button type="button" onclick="selectEstimate('${n.estimateId}'); closeModal('notifications-modal');" class="text-[11px] font-bold text-emerald-400 hover:underline">Open Estimate &rarr;</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+      document.getElementById('notifications-modal').classList.remove('hidden');
+    }
+
+    // ================= EXPORT TO FORMATTED .XLSX + SUPPLIER QUOTES .ZIP =================
+    async function exportEstimateZipPackage() {
+      if (!activeEstimate) return;
+      const btn = document.getElementById('btn-export-zip');
+      const origHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Packaging .ZIP...`;
+
+      try {
+        const zip = new JSZip();
+        const rows = activeEstimate.rows || [];
+        const groupTotals = computeGroupSubtotals(rows);
+
+        // 1. Build Main Estimate Sheet Data with auto-truncated Comments column
+        const wsData = [
+          ["ALLCON FABRICATION & ENGINEERING — PROJECT ESTIMATE"],
+          [`Client: ${activeEstimate.clientFolder} | Sub-Folder: ${activeEstimate.subFolder} | Estimate: ${activeEstimate.estimateName} | Status: ${activeEstimate.approvalStatus}`],
+          [],
+          ["#", "Category & Item", "Supplier / Item Notes", "Supplier Ref", "Supplier Quoted (R)", "Markup %", "Allcon Estimate (R)", "Status", "Attached Quotes", "Comments (Truncated)"]
+        ];
+
+        const rowHeights = [{ hpt: 24 }, { hpt: 18 }, { hpt: 10 }, { hpt: 22 }];
+        let grandCost = 0, grandSell = 0;
+
+        rows.forEach((r, idx) => {
+          const isGroup = r.type === 'group';
+          const cost = isGroup ? (groupTotals[r.id]?.cost || 0) : (Number(r.cost) || 0);
+          const markup = isGroup ? "" : (Number(r.markup) || 0);
+          const sell = isGroup ? (groupTotals[r.id]?.sell || 0) : (cost * (1 + (Number(r.markup) || 0) / 100));
+
+          if (!isGroup) {
+            grandCost += cost;
+            grandSell += sell;
+          }
+
+          const quoteNames = (r.quotes || []).map(q => q.name).join("; ");
+          const fullComments = (r.comments || []).map(c => `[${c.timestamp}] ${c.author}: ${c.text}`).join(" | ");
+          // Auto-cutoff at 110 characters so cells never stretch out of proportion in Excel
+          const safeComment = fullComments.length > 110 ? fullComments.substring(0, 107) + "..." : fullComments;
+
+          wsData.push([
+            idx + 1,
+            isGroup ? r.category : `   ${r.category}`,
+            r.notes || "",
+            r.ref || "",
+            cost,
+            isGroup ? "" : `${markup}%`,
+            sell,
+            r.status || "",
+            quoteNames,
+            safeComment
+          ]);
+          rowHeights.push({ hpt: 20 });
+        });
+
+        const totalKg = Number(activeEstimate.totalKg) || 0;
+        const ratePerKg = totalKg > 0 ? grandSell / totalKg : 0;
+
+        wsData.push([]);
+        wsData.push(["", "TOTAL PROJECT ESTIMATE", "", "", grandCost, "", grandSell, activeEstimate.approvalStatus, "", ""]);
+        wsData.push(["", "TOTAL MASS (KG)", totalKg, "RATE PER KG (R/KG)", ratePerKg, "", "", "", "", ""]);
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        ws["!cols"] = [
+          { wch: 5 },
+          { wch: 34 },
+          { wch: 32 },
+          { wch: 14 },
+          { wch: 18 },
+          { wch: 11 },
+          { wch: 18 },
+          { wch: 14 },
+          { wch: 26 },
+          { wch: 38 }
+        ];
+        ws["!rows"] = rowHeights;
+
+        // Style header & group rows
+        for (let C = 0; C < 10; C++) {
+          const hCell = ws[XLSX.utils.encode_cell({ r: 3, c: C })];
+          if (hCell) {
+            hCell.s = {
+              font: { bold: true, color: { rgb: "FFFFFF" } },
+              fill: { fgColor: { rgb: "18181B" } },
+              alignment: { vertical: "center" }
+            };
+          }
+        }
+
+        rows.forEach((r, idx) => {
+          const excelRow = idx + 4;
+          for (let C = 0; C < 10; C++) {
+            const cellRef = XLSX.utils.encode_cell({ r: excelRow, c: C });
+            const cell = ws[cellRef];
+            if (!cell) continue;
+            if (C === 4 || C === 6) cell.z = '"R"#,##0.00';
+            if (r.type === 'group') {
+              cell.s = {
+                font: { bold: true, color: { rgb: "0F172A" } },
+                fill: { fgColor: { rgb: "BAE6FD" } }
+              };
+            } else if (r.type === 'standalone') {
+              cell.s = {
+                font: { bold: true },
+                fill: { fgColor: { rgb: "FEF08A" } }
+              };
+            }
+          }
+        });
+
+        XLSX.utils.book_append_sheet(wb, ws, "Estimate Breakdown");
+
+        // 2. Second Tab: Commercial Notes (Inclusions, Excludes, Lead Time, Payment Terms, SOW)
+        const commData = [["COMMERCIAL LABEL", "DETAILS"]];
+        (activeEstimate.commercialTags || []).forEach(t => {
+          commData.push([t.label, t.content]);
+        });
+        const wsComm = XLSX.utils.aoa_to_sheet(commData);
+        wsComm["!cols"] = [{ wch: 24 }, { wch: 80 }];
+        XLSX.utils.book_append_sheet(wb, wsComm, "Commercial Notes");
+
+        const xlsxBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+        const cleanEstName = (activeEstimate.estimateName || "Estimate").replace(/[^a-zA-Z0-9_-]/g, "_");
+        const cleanClient = (activeEstimate.clientFolder || "Client").replace(/[^a-zA-Z0-9_-]/g, "_");
+        const rootFolder = zip.folder(`${cleanClient}_${cleanEstName}`);
+        rootFolder.file(`${cleanEstName}.xlsx`, xlsxBuffer);
+
+        // 3. Fetch & Bundle All Attached Supplier Quotes into Row-Specific Subfolders
+        const quotesRoot = rootFolder.folder("Supplier_Quotes");
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i];
+          if (r.quotes && r.quotes.length > 0) {
+            const rowFolderName = `${String(i + 1).padStart(2, "0")}_${(r.category || "Item").replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+            const sub = quotesRoot.folder(rowFolderName);
+            for (const q of r.quotes) {
+              try {
+                const fileRes = await fetch(q.url);
+                if (fileRes.ok) {
+                  const blob = await fileRes.blob();
+                  sub.file(q.name, blob);
+                }
+              } catch (fetchErr) {
+                console.warn("Could not bundle quote file:", q.name, fetchErr);
+              }
+            }
+          }
+        }
+
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        const downloadUrl = URL.createObjectURL(zipBlob);
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+        a.download = `${cleanClient}_${cleanEstName}_Package.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(downloadUrl);
+      } catch (err) {
+        alert("Export error: " + err.message);
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+
+    // ================= ADMIN USER MANAGEMENT =================
+    function openAdminModal() {
+      renderUsersList();
+      document.getElementById('admin-modal').classList.remove('hidden');
+    }
+
+    function renderUsersList() {
+      const container = document.getElementById('users-list');
+      if (!container) return;
+      container.innerHTML = allUsers.map(u => `
+        <div class="p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl flex justify-between items-center">
+          <div>
+            <strong class="text-white">${escapeHtml(u.username)}</strong>
+            <span class="ml-2 text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-amber-400 font-bold">${escapeHtml(u.role)}</span>
+            <div class="text-[11px] text-zinc-400">${escapeHtml(u.email || 'No email')} • Pass: ${escapeHtml(u.password)}</div>
+          </div>
+          ${u.username.toLowerCase() !== 'norman' ? `
+            <button onclick="deleteUser('${escapeHtml(u.username)}')" class="text-zinc-500 hover:text-red-400 p-1.5"><i class="fa-solid fa-trash"></i></button>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    async function handleAddUser(e) {
+      e.preventDefault();
+      const username = document.getElementById('new-u-name').value.trim();
+      const password = document.getElementById('new-u-pass').value.trim();
+      const role = document.getElementById('new-u-role').value;
+      const email = document.getElementById('new-u-email').value.trim();
+
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: "add_user", username, password, role, email })
+      });
+
+      e.target.reset();
+      await loadAllData(true);
+    }
+
+    async function deleteUser(username) {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: "delete_user", username })
+      });
+      await loadAllData(true);
+    }
+  </script>
+</body>
+</html>
