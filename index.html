@@ -26,7 +26,7 @@
       width: 100%;
       transition: all 0.12s;
     }
-    .grid-cell-input:hover {
+    .grid-cell-input:not(:disabled):hover {
       border-color: rgba(255,255,255,0.12);
       background: rgba(9, 9, 11, 0.45);
     }
@@ -34,6 +34,10 @@
       outline: none;
       border-color: #dc2626;
       background: #09090b;
+    }
+    .grid-cell-input:disabled {
+      cursor: default;
+      opacity: 0.9;
     }
     ::-webkit-scrollbar { width: 7px; height: 7px; }
     ::-webkit-scrollbar-track { background: #121215; }
@@ -70,7 +74,7 @@
 
   <!-- HEADER -->
   <header class="bg-[#121215] border-b border-zinc-800 sticky top-0 z-30">
-    <div class="max-w-[1600px] mx-auto px-4 py-2.5 flex flex-wrap justify-between items-center gap-3">
+    <div class="max-w-[1750px] mx-auto px-4 py-2.5 flex flex-wrap justify-between items-center gap-3">
       <div class="flex items-center gap-3">
         <a href="https://allconafrica.github.io/allcondashboard/" class="hover:opacity-90 transition">
           <img src="https://raw.githubusercontent.com/allconafrica/KERF/main/ALLCON-Logo.jpg" alt="ALLCON" class="h-9 rounded bg-white p-1">
@@ -81,23 +85,21 @@
             <span>User: <strong id="header-username" class="text-amber-400">---</strong></span>
             <span>•</span>
             <span id="header-role" class="uppercase font-bold text-emerald-400">---</span>
+            <span id="view-only-badge" class="hidden bg-sky-950 text-sky-300 border border-sky-700/60 px-2 py-0.2 rounded text-[10px] font-black">READ ONLY</span>
             <span id="sync-indicator" class="text-[10px] text-zinc-400 ml-1"><i class="fa-solid fa-circle text-[7px] text-emerald-500"></i> Synced</span>
           </div>
         </div>
       </div>
 
       <div class="flex items-center gap-2 flex-wrap">
-        <button onclick="openNotificationsModal()" class="relative bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold px-3 py-2 rounded-xl border border-zinc-700 transition flex items-center gap-1.5" title="30-Day @Tag Notifications">
-          <i class="fa-solid fa-bell text-amber-400"></i>
-          <span class="hidden sm:inline">30d Tags</span>
+        <!-- PERMANENT MENTIONS BELL -->
+        <button onclick="openNotificationsModal()" class="relative bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold px-3 py-2 rounded-xl border border-zinc-700 transition flex items-center gap-1.5" title="Permanent @Mentions & Approval Log">
+          <i class="fa-solid fa-at text-amber-400"></i>
+          <span>Mentions</span>
           <span id="notif-badge" class="bg-red-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">0</span>
         </button>
 
-        <button onclick="openTagModal()" class="bg-zinc-800 hover:bg-zinc-700 text-red-400 text-xs font-bold px-3 py-2 rounded-xl border border-zinc-700 transition flex items-center gap-1.5">
-          <i class="fa-solid fa-at"></i> <span class="hidden sm:inline">Tag / Notify</span>
-        </button>
-
-        <button onclick="openSaveTemplateModal()" class="bg-zinc-800 hover:bg-zinc-700 text-sky-300 text-xs font-bold px-3 py-2 rounded-xl border border-zinc-700 transition flex items-center gap-1.5">
+        <button onclick="openSaveTemplateModal()" id="btn-save-tpl" class="edit-only-ui bg-zinc-800 hover:bg-zinc-700 text-sky-300 text-xs font-bold px-3 py-2 rounded-xl border border-zinc-700 transition flex items-center gap-1.5">
           <i class="fa-solid fa-layer-group"></i> <span class="hidden md:inline">Save Template</span>
         </button>
 
@@ -105,11 +107,11 @@
           <i class="fa-solid fa-file-zipper"></i> <span>Export .ZIP</span>
         </button>
 
-        <button onclick="saveCurrentEstimate(true)" id="btn-save-est" class="bg-red-600 hover:bg-red-700 text-white text-xs font-black px-4 py-2 rounded-xl shadow transition flex items-center gap-1.5">
+        <button onclick="saveCurrentEstimate(true)" id="btn-save-est" class="edit-only-ui bg-red-600 hover:bg-red-700 text-white text-xs font-black px-4 py-2 rounded-xl shadow transition flex items-center gap-1.5">
           <i class="fa-solid fa-floppy-disk"></i> Save Estimate
         </button>
 
-        <button onclick="openAdminModal()" id="btn-admin-panel" class="hidden bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-xs font-bold px-3 py-2 rounded-xl border border-zinc-700">
+        <button onclick="openAdminModal()" id="btn-admin-panel" class="hidden bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-xs font-bold px-3 py-2 rounded-xl border border-zinc-700" title="Manage Users">
           <i class="fa-solid fa-user-shield"></i>
         </button>
 
@@ -121,18 +123,23 @@
   </header>
 
   <!-- MAIN WORKSPACE -->
-  <div class="max-w-[1600px] mx-auto w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
+  <div class="max-w-[1750px] mx-auto w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
 
-    <!-- LEFT SIDEBAR: SMARTSHEET FOLDER HIERARCHY -->
-    <aside class="lg:col-span-3 card-glass rounded-2xl p-3.5 flex flex-col justify-between h-fit lg:sticky lg:top-20 space-y-4">
+    <!-- LEFT SIDEBAR: COLLAPSIBLE SMARTSHEET FOLDER HIERARCHY -->
+    <aside id="folder-sidebar" class="lg:col-span-3 card-glass rounded-2xl p-3.5 flex flex-col justify-between h-fit lg:sticky lg:top-20 space-y-4">
       <div class="space-y-3">
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-2.5">
-          <span class="text-xs font-black uppercase tracking-wider text-red-500 flex items-center gap-1.5">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-2.5 gap-2">
+          <span class="text-xs font-black uppercase tracking-wider text-red-500 flex items-center gap-1.5 truncate">
             <i class="fa-solid fa-folder-tree"></i> Estimate Folders
           </span>
-          <button onclick="openNewEstimateModal()" class="bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1 shadow">
-            <i class="fa-solid fa-plus"></i> New Estimate
-          </button>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="openNewEstimateModal()" class="edit-only-ui bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1 shadow">
+              <i class="fa-solid fa-plus"></i> New
+            </button>
+            <button onclick="toggleFolderSidebar()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white p-1.5 rounded-lg border border-zinc-700 transition" title="Collapse Folders to Expand Sheet">
+              <i class="fa-solid fa-angles-left text-xs"></i>
+            </button>
+          </div>
         </div>
 
         <div class="relative">
@@ -152,25 +159,29 @@
     </aside>
 
     <!-- RIGHT WORKSPACE: ACTIVE ESTIMATE SHEET -->
-    <section class="lg:col-span-9 space-y-4 min-w-0">
+    <section id="main-workspace-col" class="lg:col-span-9 space-y-4 min-w-0">
 
       <!-- ESTIMATE METADATA & COMMERCIAL PILLS BAR -->
       <div class="card-glass rounded-2xl p-4 space-y-3">
         <div class="flex flex-wrap justify-between items-start gap-3">
           <div class="space-y-1 flex-grow min-w-[260px]">
             <div class="flex items-center gap-2 flex-wrap text-[11px] font-bold text-zinc-400">
+              <button id="expand-sidebar-btn" onclick="toggleFolderSidebar()" class="hidden bg-zinc-800 hover:bg-red-600/20 text-amber-400 border border-zinc-700 px-2 py-0.5 rounded flex items-center gap-1 transition" title="Show Estimate Folders">
+                <i class="fa-solid fa-angles-right text-[10px]"></i> Folders
+              </button>
               <span class="bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700 text-amber-400" id="crumb-client">CLIENT</span>
               <i class="fa-solid fa-chevron-right text-[9px]"></i>
               <span class="bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700 text-sky-300" id="crumb-subfolder">SUB-FOLDER</span>
-              <button onclick="openEditFolderModal()" class="text-zinc-400 hover:text-white underline text-[10px] ml-1"><i class="fa-solid fa-pen"></i> Move / Rename</button>
+              <button onclick="openEditFolderModal()" class="edit-only-ui text-zinc-400 hover:text-white underline text-[10px] ml-1"><i class="fa-solid fa-pen"></i> Move / Rename</button>
+              <span id="submitted-by-badge" class="hidden text-[10px] bg-zinc-900 border border-zinc-700 text-zinc-300 px-2 py-0.5 rounded"></span>
             </div>
-            <input type="text" id="active-est-name" onchange="updateEstimateMeta('estimateName', this.value)" class="text-lg md:text-xl font-black text-white bg-transparent border-b border-transparent hover:border-zinc-700 focus:border-red-500 focus:outline-none w-full uppercase tracking-tight" value="NEW ESTIMATE">
+            <input type="text" id="active-est-name" onchange="updateEstimateMeta('estimateName', this.value)" class="est-editable text-lg md:text-xl font-black text-white bg-transparent border-b border-transparent hover:border-zinc-700 focus:border-red-500 focus:outline-none w-full uppercase tracking-tight" value="NEW ESTIMATE">
           </div>
 
           <div class="flex items-center gap-2 flex-wrap">
             <div>
               <label class="block text-[10px] font-bold text-zinc-400 uppercase">Approval Status</label>
-              <select id="active-est-status" onchange="updateEstimateMeta('approvalStatus', this.value)" class="p-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-black text-amber-300">
+              <select id="active-est-status" onchange="handleApprovalStatusChange(this.value)" class="est-editable p-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-black text-amber-300">
                 <option value="DRAFT">DRAFT</option>
                 <option value="SUBMITTED">SUBMITTED FOR APPROVAL</option>
                 <option value="APPROVED">APPROVED</option>
@@ -179,22 +190,29 @@
             </div>
             <div>
               <label class="block text-[10px] font-bold text-zinc-400 uppercase">Total Mass (KG)</label>
-              <input type="number" step="0.01" id="active-est-kg" oninput="updateEstimateKg(this.value)" value="0" class="w-28 p-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-black text-white text-right">
+              <input type="number" step="0.01" id="active-est-kg" oninput="updateEstimateKg(this.value)" value="0" class="est-editable w-28 p-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-black text-white text-right">
             </div>
-            <button onclick="deleteCurrentEstimate()" class="mt-4 bg-zinc-900 hover:bg-red-950 text-zinc-500 hover:text-red-400 p-2 rounded-xl border border-zinc-800 transition" title="Delete Estimate">
+            <!-- DUPLICATE ESTIMATE BUTTON (SPLIT COPY ICON NEXT TO TRASH) -->
+            <button onclick="duplicateCurrentEstimate()" class="edit-only-ui mt-4 bg-zinc-900 hover:bg-sky-950 text-zinc-300 hover:text-sky-300 p-2 rounded-xl border border-zinc-800 transition" title="Duplicate Estimate for Variation / Option">
+              <i class="fa-regular fa-clone text-xs"></i>
+            </button>
+            <button onclick="deleteCurrentEstimate()" class="edit-only-ui mt-4 bg-zinc-900 hover:bg-red-950 text-zinc-500 hover:text-red-400 p-2 rounded-xl border border-zinc-800 transition" title="Delete Estimate">
               <i class="fa-solid fa-trash-can text-xs"></i>
             </button>
           </div>
         </div>
 
-        <!-- COMMERCIAL TAG PILLS -->
+        <!-- COMMERCIAL TAG PILLS + ONE-CLICK XERO COPY -->
         <div class="pt-2 border-t border-zinc-800/80 flex flex-wrap items-center gap-2">
           <span class="text-[10px] font-black uppercase tracking-wider text-zinc-400 mr-1">
             <i class="fa-solid fa-tags text-red-500 mr-1"></i> Commercial Notes:
           </span>
           <div id="commercial-pills-container" class="flex flex-wrap items-center gap-1.5"></div>
-          <button onclick="openAddCommercialPillModal()" class="text-[11px] font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-dashed border-zinc-600 px-2.5 py-1 rounded-full transition flex items-center gap-1">
+          <button onclick="openAddCommercialPillModal()" class="edit-only-ui text-[11px] font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-dashed border-zinc-600 px-2.5 py-1 rounded-full transition flex items-center gap-1">
             <i class="fa-solid fa-plus text-[9px] text-red-400"></i> Add Label (SOW / Terms)
+          </button>
+          <button type="button" id="btn-copy-xero-notes" onclick="copyAllCommercialNotesForXero()" class="ml-auto text-[11px] font-bold bg-emerald-950/70 hover:bg-emerald-800/60 text-emerald-300 border border-emerald-700/60 px-3 py-1 rounded-full transition flex items-center gap-1.5" title="Copy all Commercial Notes formatted for Xero Quote">
+            <i class="fa-regular fa-copy text-[10px]"></i> Copy All for Xero
           </button>
         </div>
       </div>
@@ -222,7 +240,7 @@
       <!-- SMARTSHEET GRID TOOLBAR & TABLE -->
       <div class="card-glass rounded-2xl overflow-hidden">
         <div class="bg-zinc-900/90 px-4 py-2.5 border-b border-zinc-800 flex flex-wrap justify-between items-center gap-2">
-          <div class="flex items-center gap-2 flex-wrap">
+          <div class="edit-only-ui flex items-center gap-2 flex-wrap">
             <button onclick="addRow('group')" class="bg-sky-900/60 hover:bg-sky-800 text-sky-200 border border-sky-700/60 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
               <i class="fa-solid fa-folder-plus"></i> Add Section Group
             </button>
@@ -233,7 +251,7 @@
               <i class="fa-solid fa-star"></i> Add Buyout / Highlight Line
             </button>
           </div>
-          <div class="flex items-center gap-2 text-[11px] text-zinc-400">
+          <div class="flex items-center gap-2 text-[11px] text-zinc-400 ml-auto">
             <span><i class="fa-solid fa-paperclip text-zinc-400"></i> Empty</span>
             <span>•</span>
             <span><i class="fa-solid fa-paperclip text-red-500"></i> Quote Attached</span>
@@ -244,16 +262,18 @@
           <table class="w-full text-left border-collapse text-xs">
             <thead>
               <tr class="bg-[#121215] border-b border-zinc-800 text-[10px] font-black uppercase tracking-wider text-zinc-400">
-                <th class="py-2.5 px-2 w-10 text-center">#</th>
-                <th class="py-2.5 px-2 w-24 text-center">Quotes / Notes</th>
-                <th class="py-2.5 px-2 min-w-[230px]">Category & Item</th>
-                <th class="py-2.5 px-2 min-w-[210px]">Supplier / Item Notes</th>
+                <th class="py-2.5 px-2 w-9 text-center">#</th>
+                <th class="py-2.5 px-2 w-20 text-center">Quotes / Notes</th>
+                <th class="py-2.5 px-2 min-w-[200px]">Category & Item</th>
+                <th class="py-2.5 px-2 min-w-[180px]">Supplier / Item Notes</th>
                 <th class="py-2.5 px-2 w-24">Supplier Ref</th>
-                <th class="py-2.5 px-2 w-32 text-right">Supplier Quoted (R)</th>
-                <th class="py-2.5 px-2 w-24 text-right">Markup %</th>
+                <th class="py-2.5 px-2 w-20 text-right">Qty / Hrs</th>
+                <th class="py-2.5 px-2 w-28 text-right">Unit Rate (R)</th>
+                <th class="py-2.5 px-2 w-28 text-right">Supplier Quoted (R)</th>
+                <th class="py-2.5 px-2 w-20 text-right">Markup %</th>
                 <th class="py-2.5 px-2 w-32 text-right">Allcon Estimate (R)</th>
-                <th class="py-2.5 px-2 w-28">Row Status</th>
-                <th class="py-2.5 px-2 w-20 text-center">Actions</th>
+                <th class="py-2.5 px-2 w-24">Row Status</th>
+                <th class="py-2.5 px-2 w-16 text-center edit-only-ui">Actions</th>
               </tr>
             </thead>
             <tbody id="estimate-grid-body" class="divide-y divide-zinc-800/70"></tbody>
@@ -326,6 +346,33 @@
     </div>
   </div>
 
+  <!-- MODAL: APPROVAL STATUS CHANGE & TARGETED NOTIFICATION -->
+  <div id="status-notify-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
+    <div class="card-glass rounded-2xl max-w-md w-full p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-paper-plane text-red-500"></i> Status Updated: <span id="status-modal-badge" class="text-amber-300">SUBMITTED</span>
+        </h2>
+        <button onclick="closeModal('status-notify-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitStatusNotification(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">WHO SHOULD BE NOTIFIED FOR THIS ESTIMATE?</label>
+          <select id="status-notify-user" class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-amber-300 font-bold"></select>
+          <p id="status-notify-hint" class="text-[11px] text-zinc-400 mt-1"></p>
+        </div>
+        <div>
+          <label class="block font-bold text-zinc-400 mb-1">APPROVAL / HANDOVER NOTE</label>
+          <textarea id="status-notify-msg" rows="3" required class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white"></textarea>
+        </div>
+        <div class="flex justify-between items-center pt-2 border-t border-zinc-800">
+          <button type="button" onclick="skipStatusNotification()" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold">Save Without Notifying</button>
+          <button type="submit" id="btn-submit-status-notify" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow">Save & Send Alert</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: ROW-ISOLATED SUPPLIER QUOTES -->
   <div id="quotes-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
     <div class="card-glass rounded-2xl max-w-lg w-full p-5 space-y-4">
@@ -339,7 +386,7 @@
         <button onclick="closeModal('quotes-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <div class="bg-zinc-900/90 border border-dashed border-zinc-700 rounded-xl p-4 text-center space-y-2">
+      <div class="edit-only-ui bg-zinc-900/90 border border-dashed border-zinc-700 rounded-xl p-4 text-center space-y-2">
         <label class="cursor-pointer inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow transition">
           <i class="fa-solid fa-cloud-arrow-up"></i> Upload Supplier Quote(s) (PDF / Image)
           <input type="file" id="row-quote-upload-input" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" onchange="handleRowQuoteUpload(this.files)" class="hidden">
@@ -355,7 +402,7 @@
     </div>
   </div>
 
-  <!-- MODAL: ROW CHAT BUBBLE COMMENTS -->
+  <!-- MODAL: ROW CHAT BUBBLE COMMENTS (PERMANENT) -->
   <div id="row-comment-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
     <div class="card-glass rounded-2xl max-w-lg w-full p-5 space-y-4">
       <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
@@ -370,10 +417,10 @@
 
       <div id="row-comments-thread" class="space-y-2 max-h-60 overflow-y-auto text-xs"></div>
 
-      <div class="space-y-2 pt-2 border-t border-zinc-800">
-        <textarea id="new-row-comment-text" rows="2" placeholder="Add a note or type @Boss to notify for approval..." class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white focus:border-red-500 focus:outline-none"></textarea>
+      <div class="edit-only-ui space-y-2 pt-2 border-t border-zinc-800">
+        <textarea id="new-row-comment-text" rows="2" placeholder="Add a permanent note or type @Boss to mention..." class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white focus:border-red-500 focus:outline-none"></textarea>
         <div class="flex justify-between items-center">
-          <span class="text-[10px] text-zinc-400">Tip: Include <strong class="text-red-400">@Boss</strong> to trigger a 30-day tag + email alert.</span>
+          <span class="text-[10px] text-zinc-400">Notes stay permanently. Type <strong class="text-red-400">@Username</strong> to log a mention & email alert.</span>
           <button onclick="addRowComment()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow">Post Note</button>
         </div>
       </div>
@@ -392,17 +439,17 @@
       <div class="space-y-3 text-xs">
         <div>
           <label class="block font-bold text-zinc-400 mb-1">PILL LABEL (e.g. INCLUSIONS, SOW, EXCLUDES, LEAD TIME)</label>
-          <input type="text" id="pill-label-input" class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-bold uppercase">
+          <input type="text" id="pill-label-input" class="est-editable w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-bold uppercase">
         </div>
         <div>
           <label class="block font-bold text-zinc-400 mb-1">DETAILS / LIST ITEMS (One per line)</label>
-          <textarea id="pill-content-input" rows="7" placeholder="Enter scope items, inclusions, exclusions, or payment terms..." class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white leading-relaxed"></textarea>
+          <textarea id="pill-content-input" rows="7" placeholder="Enter scope items, inclusions, exclusions, or payment terms..." class="est-editable w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white leading-relaxed"></textarea>
         </div>
         <div class="flex justify-between items-center pt-2 border-t border-zinc-800">
-          <button type="button" id="btn-delete-pill" onclick="deleteActivePill()" class="text-red-400 hover:text-red-300 font-bold px-2 py-1"><i class="fa-solid fa-trash-can mr-1"></i> Remove Pill</button>
-          <div class="flex gap-2">
-            <button type="button" onclick="closeModal('pill-modal')" class="px-4 py-2 bg-zinc-800 text-white rounded-xl font-bold">Cancel</button>
-            <button type="button" onclick="saveActivePill()" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow">Save Note</button>
+          <button type="button" id="btn-delete-pill" onclick="deleteActivePill()" class="edit-only-ui text-red-400 hover:text-red-300 font-bold px-2 py-1"><i class="fa-solid fa-trash-can mr-1"></i> Remove Pill</button>
+          <div class="flex gap-2 ml-auto">
+            <button type="button" onclick="closeModal('pill-modal')" class="px-4 py-2 bg-zinc-800 text-white rounded-xl font-bold">Close</button>
+            <button type="button" onclick="saveActivePill()" class="edit-only-ui px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow">Save Note</button>
           </div>
         </div>
       </div>
@@ -431,38 +478,13 @@
     </div>
   </div>
 
-  <!-- MODAL: TAG / NOTIFY USER -->
-  <div id="tag-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
-    <div class="card-glass rounded-2xl max-w-md w-full p-5 space-y-4">
-      <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
-        <h2 class="text-base font-bold text-white flex items-center gap-2"><i class="fa-solid fa-at text-red-500"></i> Tag User for Review / Approval</h2>
-        <button onclick="closeModal('tag-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <form onsubmit="submitTagNotification(event)" class="space-y-3 text-xs">
-        <div>
-          <label class="block font-bold text-zinc-400 mb-1">SELECT USER TO TAG (@MENTION)</label>
-          <select id="tag-target-user" class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-amber-300 font-bold"></select>
-        </div>
-        <div>
-          <label class="block font-bold text-zinc-400 mb-1">MESSAGE *</label>
-          <textarea id="tag-message-input" rows="3" required placeholder="e.g. @Boss - Estimate complete and supplier quotes attached. Please approve." class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white"></textarea>
-        </div>
-        <p class="text-[11px] text-zinc-400">Sends an immediate email alert and keeps this notification pinned on the site for <strong>30 days</strong>.</p>
-        <div class="flex justify-end gap-2 pt-2 border-t border-zinc-800">
-          <button type="button" onclick="closeModal('tag-modal')" class="px-4 py-2 bg-zinc-800 text-white rounded-xl font-bold">Cancel</button>
-          <button type="submit" id="btn-send-tag" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow">Send @Tag Alert</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: 30-DAY ACTIVE NOTIFICATIONS -->
+  <!-- MODAL: PERMANENT MENTIONS & APPROVAL LOG -->
   <div id="notifications-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
     <div class="card-glass rounded-2xl max-w-xl w-full p-5 space-y-4">
       <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
         <div>
-          <h2 class="text-base font-bold text-white flex items-center gap-2"><i class="fa-solid fa-bell text-amber-400"></i> 30-Day Active @Tag Approvals</h2>
-          <p class="text-[11px] text-zinc-400">All @tags stay visible for 30 days so periodic approvals are never missed.</p>
+          <h2 class="text-base font-bold text-white flex items-center gap-2"><i class="fa-solid fa-at text-amber-400"></i> Mentions & Approval History</h2>
+          <p class="text-[11px] text-zinc-400">Permanent audit trail of all @mentions and status handovers across estimates.</p>
         </div>
         <button onclick="closeModal('notifications-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
@@ -473,22 +495,23 @@
     </div>
   </div>
 
-  <!-- MODAL: ADMIN USERS -->
+  <!-- MODAL: ADMIN USERS (INCLUDES VIEW-ONLY ROLE) -->
   <div id="admin-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
     <div class="card-glass rounded-2xl max-w-lg w-full p-5 space-y-4">
       <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
-        <h2 class="text-base font-bold text-amber-400"><i class="fa-solid fa-users-gear mr-1"></i> Estimating Users & Approvers</h2>
+        <h2 class="text-base font-bold text-amber-400"><i class="fa-solid fa-users-gear mr-1"></i> Users, Approvers & View-Only Access</h2>
         <button onclick="closeModal('admin-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form onsubmit="handleAddUser(event)" class="grid grid-cols-2 gap-2 text-xs bg-zinc-900 p-3 rounded-xl">
-        <input type="text" id="new-u-name" required placeholder="Username (e.g. Boss)" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white">
+        <input type="text" id="new-u-name" required placeholder="Username (e.g. Norlene)" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white">
         <input type="text" id="new-u-pass" required placeholder="Password" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white">
         <select id="new-u-role" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white font-bold">
           <option value="ESTIMATOR">ESTIMATOR</option>
           <option value="APPROVER">APPROVER (BOSS)</option>
+          <option value="VIEW-ONLY">VIEW-ONLY (READ ONLY)</option>
           <option value="ADMIN">ADMIN</option>
         </select>
-        <input type="email" id="new-u-email" required placeholder="Email for @Tag Alerts" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white">
+        <input type="email" id="new-u-email" required placeholder="Email for @Mention Alerts" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white">
         <button type="submit" class="col-span-2 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg">Add User</button>
       </form>
       <div id="users-list" class="space-y-2 max-h-56 overflow-y-auto text-xs"></div>
@@ -510,6 +533,12 @@
     let activeModalRowId = null;
     let activePillIndex = -1;
     let collapsedFolders = new Set();
+    let sidebarCollapsed = false;
+    let pendingStatusChange = null;
+
+    function isViewOnly() {
+      return currentUser && currentUser.role === "VIEW-ONLY";
+    }
 
     function getBuiltInDefaultTemplate() {
       const uid = () => "R-" + Math.random().toString(36).substring(2, 9);
@@ -517,76 +546,76 @@
         id: "BUILTIN-ALLCON-STD",
         templateName: "ALLCON STANDARD FABRICATION TEMPLATE",
         rows: [
-          { id: uid(), type: "group", category: "MATERIAL", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "MATERIAL PLATE", notes: "GENESIS - ALLCON STOCK - FAST FLAME", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "PLASMA CUTTING", notes: "ALLCON AFRICA", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "ANGLE IRON", notes: "MACSTEEL - S&P - S & L", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "BEAMS", notes: "MACSTEEL - S&P - S & L", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "PIPE", notes: "MACSTEEL - S&P - S & L", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "FLANGES", notes: "MACSTEEL - M.P.S", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "O-RING CHORD", notes: "FAST FLAME", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "MATERIAL", notes: "SUPPLIER", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "MATERIAL PLATE", notes: "GENESIS - ALLCON STOCK - FAST FLAME", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "PLASMA CUTTING", notes: "ALLCON AFRICA", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "ANGLE IRON", notes: "MACSTEEL - S&P - S & L", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "BEAMS", notes: "MACSTEEL - S&P - S & L", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "PIPE", notes: "MACSTEEL - S&P - S & L", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "FLANGES", notes: "MACSTEEL - M.P.S", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "O-RING CHORD", notes: "FAST FLAME", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "group", category: "ROLLING", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "ROLLING ANGLE / PLATE", notes: "ALLCON - ACTIVE ROLLING - ROLLFAB", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "ROLLING", notes: "SUPPLIER", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "ROLLING ANGLE / PLATE", notes: "ALLCON - ACTIVE ROLLING - ROLLFAB", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "group", category: "THERMAL STRESS RELIEVE", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "STRESS RELIEVE", notes: "NJM", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "THERMAL STRESS RELIEVE", notes: "SUPPLIER", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "STRESS RELIEVE", notes: "NJM", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "group", category: "MACHINE PRICES", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "MACHINING LARGE ITEMS", notes: "DABARESA - RUVIS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "MACHINING SMALL ITEMS", notes: "DABARESA - RUVIS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "MACHINE PRICES", notes: "SUPPLIER", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "MACHINING LARGE ITEMS", notes: "DABARESA - RUVIS", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "MACHINING SMALL ITEMS", notes: "DABARESA - RUVIS", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "group", category: "GASKETS", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "NEOPRENE", notes: "CUSTOM SEALS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "BUTYL", notes: "CUSTOM SEALS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "GASKETS", notes: "SUPPLIER", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "NEOPRENE", notes: "CUSTOM SEALS", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "BUTYL", notes: "CUSTOM SEALS", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "group", category: "FASTENERS AS PER BOLT LIST", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "FASTENERS", notes: "IMPACT BOLTS - VERBOLT", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "FASTENERS AS PER BOLT LIST", notes: "SUPPLIER", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "FASTENERS", notes: "IMPACT BOLTS - VERBOLT", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "group", category: "TRANSPORT", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "TRANSPORT ROLLINGS COLLECT/DEL", notes: "SUPPLIER DELIVER - SHEPHERD COLLECT", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "TRANSPORT M/C COLLECT/DEL", notes: "SHEPHERD", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "TRANSPORT STRESS RELIEVE", notes: "SHEPHERD", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "TRANSPORT", notes: "SUPPLIER", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "TRANSPORT ROLLINGS COLLECT/DEL", notes: "SUPPLIER DELIVER - SHEPHERD COLLECT", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "TRANSPORT M/C COLLECT/DEL", notes: "SHEPHERD", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "TRANSPORT STRESS RELIEVE", notes: "SHEPHERD", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "group", category: "NON DESTRUCTIVE TESTING", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "NDT", notes: "SPECTRA", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "NDT CONSUMABLES", notes: "ALTEZ", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "NON DESTRUCTIVE TESTING", notes: "SUPPLIER", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "NDT", notes: "SPECTRA", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "NDT CONSUMABLES", notes: "ALTEZ", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "group", category: "CONSUMABLES", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "AS NEEDED", notes: "VARIOUS SUPPLIERS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "WELDING WIRE", notes: "", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "WELDING GAS", notes: "", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "LPG GAS", notes: "", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "CONSUMABLES", notes: "SUPPLIER", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "AS NEEDED", notes: "VARIOUS SUPPLIERS", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "WELDING WIRE", notes: "", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "WELDING GAS", notes: "", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "LPG GAS", notes: "", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "group", category: "PAINT", notes: "SUPPLIER", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "BLASTING SA 2.5", notes: "ALLCON", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "PRIMER (AS PER SPEC)", notes: "STONCOR - JOTUN - INTER B&A PAINTS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "INTERMEDIATE (AS PER SPEC)", notes: "STONCOR - JOTUN - INTER B&A PAINTS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "FINAL COAT (AS PER SPEC)", notes: "STONCOR - JOTUN - INTER B&A PAINTS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "PAINT", notes: "SUPPLIER", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "BLASTING SA 2.5", notes: "ALLCON", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "PRIMER (AS PER SPEC)", notes: "STONCOR - JOTUN - INTER B&A PAINTS", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "INTERMEDIATE (AS PER SPEC)", notes: "STONCOR - JOTUN - INTER B&A PAINTS", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "FINAL COAT (AS PER SPEC)", notes: "STONCOR - JOTUN - INTER B&A PAINTS", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "group", category: "MANUFACTURING LABOUR", notes: "HOURS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "FABRICATION", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "STRAIGHTEN", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "WELDING", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "ASSEMBLY", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "DISASSEMBLY", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "HANDLING", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "GRINDING", notes: "0 hrs", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "MANUFACTURING LABOUR", notes: "HOURS x HOURLY RATE", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "FABRICATION", notes: "Workshop Fabrication", ref: "", qty: 0, unitRate: 450, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "STRAIGHTEN", notes: "Workshop Straightening", ref: "", qty: 0, unitRate: 450, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "WELDING", notes: "Coded / Structural Welding", ref: "", qty: 0, unitRate: 450, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "ASSEMBLY", notes: "Trial Assembly", ref: "", qty: 0, unitRate: 450, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "DISASSEMBLY", notes: "Disassembly for Transport", ref: "", qty: 0, unitRate: 450, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "HANDLING", notes: "Crane / Forklift Handling", ref: "", qty: 0, unitRate: 450, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "GRINDING", notes: "Dressing & Grinding", ref: "", qty: 0, unitRate: 450, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "group", category: "ADMIN COST", notes: "HOURS", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "ESTIMATING", notes: "1", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "QCQA", notes: "2", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "ADMIN", notes: "2", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "PROCUREMENT", notes: "1", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "ADMIN COST", notes: "HOURS x HOURLY RATE", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "ESTIMATING", notes: "Hours", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "QCQA", notes: "Hours", ref: "", qty: 2, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "ADMIN", notes: "Hours", ref: "", qty: 2, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "PROCUREMENT", notes: "Hours", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "group", category: "DRAWINGS", notes: "", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "ENQUIRY DRAWINGS", notes: "1", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "MANUFACTURE DRAWINGS", notes: "", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "item", category: "REV00 DRAWINGS", notes: "", ref: "", cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "group", category: "DRAWINGS", notes: "HOURS x HOURLY RATE", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "ENQUIRY DRAWINGS", notes: "Hours", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "MANUFACTURE DRAWINGS", notes: "Hours", ref: "", qty: 0, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "item", category: "REV00 DRAWINGS", notes: "Hours", ref: "", qty: 0, unitRate: 0, cost: 0, markup: 12, status: "", quotes: [], comments: [] },
 
-          { id: uid(), type: "standalone", category: "MACHINING (OUTSOURCED)", notes: "", ref: "", cost: 0, markup: 20, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "standalone", category: "RUBBER LINING", notes: "", ref: "", cost: 0, markup: 20, status: "", quotes: [], comments: [] },
-          { id: uid(), type: "standalone", category: "PACKAGING", notes: "", ref: "", cost: 0, markup: 0, status: "", quotes: [], comments: [] }
+          { id: uid(), type: "standalone", category: "MACHINING (OUTSOURCED)", notes: "", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 20, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "standalone", category: "RUBBER LINING", notes: "", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 20, status: "", quotes: [], comments: [] },
+          { id: uid(), type: "standalone", category: "PACKAGING", notes: "", ref: "", qty: 1, unitRate: 0, cost: 0, markup: 0, status: "", quotes: [], comments: [] }
         ],
         commercialTags: [
           { label: "INCLUSIONS", content: "Labour\nMaterial\nFabrication\nStress Relieve\nNDT\nDrilling\nMachining\nRubber Lining\nSand Blast SA2.5\nPrimer: Carboguard 880\nFinal: Carbothane 134\nPackaging" },
@@ -611,6 +640,33 @@
     }
 
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function toggleFolderSidebar() {
+      sidebarCollapsed = !sidebarCollapsed;
+      const sidebar = document.getElementById('folder-sidebar');
+      const mainCol = document.getElementById('main-workspace-col');
+      const expandBtn = document.getElementById('expand-sidebar-btn');
+
+      if (sidebarCollapsed) {
+        sidebar.classList.add('hidden');
+        mainCol.classList.remove('lg:col-span-9');
+        mainCol.classList.add('lg:col-span-12');
+        expandBtn.classList.remove('hidden');
+      } else {
+        sidebar.classList.remove('hidden');
+        mainCol.classList.remove('lg:col-span-12');
+        mainCol.classList.add('lg:col-span-9');
+        expandBtn.classList.add('hidden');
+      }
+    }
+
+    // Backward-compatible row cost resolver (supports Qty * UnitRate or legacy direct cost)
+    function getRowBaseCost(row) {
+      if (row.qty !== undefined && row.unitRate !== undefined) {
+        return (Number(row.qty) || 0) * (Number(row.unitRate) || 0);
+      }
+      return Number(row.cost) || 0;
+    }
 
     async function loadAllData(manual = false) {
       if (manual) document.getElementById('sync-indicator').innerHTML = `<i class="fa-solid fa-spinner fa-spin text-amber-400"></i> Syncing...`;
@@ -637,6 +693,7 @@
               estimateName: "NEW SAMPLE ESTIMATE",
               approvalStatus: "DRAFT",
               createdBy: currentUser ? currentUser.username : "Estimator",
+              submittedBy: "",
               totalKg: 0,
               rows: tpl.rows,
               commercialTags: tpl.commercialTags
@@ -689,6 +746,10 @@
       if (currentUser.role === 'ADMIN' || currentUser.role === 'APPROVER') {
         document.getElementById('btn-admin-panel').classList.remove('hidden');
       }
+      if (isViewOnly()) {
+        document.getElementById('view-only-badge').classList.remove('hidden');
+        document.querySelectorAll('.edit-only-ui').forEach(el => el.classList.add('hidden'));
+      }
     }
 
     function logout() {
@@ -739,7 +800,7 @@
 
       const clients = Object.keys(tree).sort();
       if (clients.length === 0) {
-        container.innerHTML = `<div class="text-zinc-500 text-center py-6">No saved estimates match. Click <strong>New Estimate</strong> to start one.</div>`;
+        container.innerHTML = `<div class="text-zinc-500 text-center py-6">No saved estimates match.</div>`;
         return;
       }
 
@@ -808,7 +869,7 @@
           currentGroupId = r.id;
           groupTotals[currentGroupId] = { cost: 0, sell: 0 };
         } else if (r.type === 'item' && currentGroupId) {
-          const c = Number(r.cost) || 0;
+          const c = getRowBaseCost(r);
           const m = Number(r.markup) || 0;
           const s = c * (1 + m / 100);
           groupTotals[currentGroupId].cost += c;
@@ -822,12 +883,28 @@
 
     function renderActiveEstimate() {
       if (!activeEstimate) return;
+      const readOnly = isViewOnly();
 
       document.getElementById('crumb-client').innerText = activeEstimate.clientFolder || "GENERAL";
       document.getElementById('crumb-subfolder').innerText = activeEstimate.subFolder || "GENERAL";
       document.getElementById('active-est-name').value = activeEstimate.estimateName || "";
       document.getElementById('active-est-status').value = activeEstimate.approvalStatus || "DRAFT";
       document.getElementById('active-est-kg').value = activeEstimate.totalKg || 0;
+
+      const subBadge = document.getElementById('submitted-by-badge');
+      if (activeEstimate.submittedBy) {
+        subBadge.innerText = `Submitted by: ${activeEstimate.submittedBy}`;
+        subBadge.classList.remove('hidden');
+      } else {
+        subBadge.classList.add('hidden');
+      }
+
+      document.querySelectorAll('.est-editable').forEach(el => {
+        el.disabled = readOnly;
+      });
+      if (readOnly) {
+        document.querySelectorAll('.edit-only-ui').forEach(el => el.classList.add('hidden'));
+      }
 
       renderCommercialPills();
 
@@ -840,7 +917,7 @@
 
       rows.forEach(r => {
         if (r.type !== 'group') {
-          const c = Number(r.cost) || 0;
+          const c = getRowBaseCost(r);
           const m = Number(r.markup) || 0;
           grandCost += c;
           grandSell += c * (1 + m / 100);
@@ -863,7 +940,10 @@
         const quoteCount = (row.quotes || []).length;
         const commentCount = (row.comments || []).length;
 
-        const rowCost = isGroup ? (groupTotals[row.id]?.cost || 0) : (Number(row.cost) || 0);
+        // Normalize legacy rows that only had `cost`
+        const qtyVal = row.qty !== undefined ? Number(row.qty) : 1;
+        const rateVal = row.unitRate !== undefined ? Number(row.unitRate) : (Number(row.cost) || 0);
+        const rowCost = isGroup ? (groupTotals[row.id]?.cost || 0) : (qtyVal * rateVal);
         const rowMarkup = Number(row.markup) || 0;
         const rowSell = isGroup ? (groupTotals[row.id]?.sell || 0) : (rowCost * (1 + rowMarkup / 100));
 
@@ -877,11 +957,11 @@
 
             <td class="py-1.5 px-2 text-center">
               <div class="inline-flex items-center gap-2">
-                <button type="button" onclick="openQuotesModal('${row.id}')" class="relative p-1 rounded hover:bg-zinc-800 transition ${quoteCount > 0 ? 'text-red-500' : 'text-zinc-400 hover:text-zinc-200'}" title="${quoteCount > 0 ? quoteCount + ' Supplier Quote(s) Attached' : 'Attach Supplier Quote'}">
+                <button type="button" onclick="openQuotesModal('${row.id}')" class="relative p-1 rounded hover:bg-zinc-800 transition ${quoteCount > 0 ? 'text-red-500' : 'text-zinc-400 hover:text-zinc-200'}" title="${quoteCount > 0 ? quoteCount + ' Supplier Quote(s) Attached' : 'View / Attach Supplier Quote'}">
                   <i class="fa-solid fa-paperclip text-sm"></i>
                   ${quoteCount > 0 ? `<span class="ml-0.5 text-[10px] font-black text-red-400">${quoteCount}</span>` : ''}
                 </button>
-                <button type="button" onclick="openRowCommentModal('${row.id}')" class="relative p-1 rounded hover:bg-zinc-800 transition ${commentCount > 0 ? 'text-sky-400' : 'text-zinc-500 hover:text-zinc-200'}" title="Line Comments">
+                <button type="button" onclick="openRowCommentModal('${row.id}')" class="relative p-1 rounded hover:bg-zinc-800 transition ${commentCount > 0 ? 'text-sky-400' : 'text-zinc-500 hover:text-zinc-200'}" title="Permanent Line Comments">
                   <i class="fa-regular fa-comment-dots text-sm"></i>
                   ${commentCount > 0 ? `<span class="ml-0.5 text-[10px] font-black text-sky-300">${commentCount}</span>` : ''}
                 </button>
@@ -889,40 +969,57 @@
             </td>
 
             <td class="py-1 px-2 ${!isGroup && !isStandalone ? 'pl-6' : ''}">
-              <input type="text" value="${escapeHtml(row.category)}" onchange="updateRowField('${row.id}', 'category', this.value)" class="grid-cell-input uppercase ${isGroup ? 'text-sky-200 font-black' : isStandalone ? 'text-amber-300 font-black' : 'text-white font-semibold'}">
+              <input type="text" ${readOnly ? 'disabled' : ''} value="${escapeHtml(row.category)}" onchange="updateRowField('${row.id}', 'category', this.value)" class="grid-cell-input uppercase ${isGroup ? 'text-sky-200 font-black' : isStandalone ? 'text-amber-300 font-black' : 'text-white font-semibold'}">
             </td>
 
             <td class="py-1 px-2">
-              <input type="text" value="${escapeHtml(row.notes)}" onchange="updateRowField('${row.id}', 'notes', this.value)" class="grid-cell-input text-zinc-300">
+              <input type="text" ${readOnly ? 'disabled' : ''} value="${escapeHtml(row.notes)}" onchange="updateRowField('${row.id}', 'notes', this.value)" class="grid-cell-input text-zinc-300">
             </td>
 
             <td class="py-1 px-2">
-              <input type="text" value="${escapeHtml(row.ref)}" onchange="updateRowField('${row.id}', 'ref', this.value)" placeholder="Ref" class="grid-cell-input text-zinc-400">
+              <input type="text" ${readOnly ? 'disabled' : ''} value="${escapeHtml(row.ref)}" onchange="updateRowField('${row.id}', 'ref', this.value)" placeholder="Ref" class="grid-cell-input text-zinc-400">
             </td>
 
+            <!-- QTY / HRS -->
             <td class="py-1 px-2 text-right font-mono">
               ${isGroup
-                ? `<span class="px-2 py-1 text-sky-200 font-black">${formatZar(rowCost)}</span>`
-                : `<input type="number" step="0.01" value="${rowCost}" onchange="updateRowNumeric('${row.id}', 'cost', this.value)" class="grid-cell-input text-right font-bold text-white">`
+                ? `<span class="text-zinc-500 text-[10px]">--</span>`
+                : `<input type="number" step="0.01" ${readOnly ? 'disabled' : ''} value="${qtyVal}" onchange="updateRowRateOrQty('${row.id}', 'qty', this.value)" class="grid-cell-input text-right font-bold text-sky-300">`
               }
             </td>
 
+            <!-- UNIT RATE (R) -->
+            <td class="py-1 px-2 text-right font-mono">
+              ${isGroup
+                ? `<span class="text-zinc-500 text-[10px]">--</span>`
+                : `<input type="number" step="0.01" ${readOnly ? 'disabled' : ''} value="${rateVal}" onchange="updateRowRateOrQty('${row.id}', 'unitRate', this.value)" class="grid-cell-input text-right font-bold text-white">`
+              }
+            </td>
+
+            <!-- SUPPLIER QUOTED LINE TOTAL (QTY * UNIT RATE) -->
+            <td class="py-1.5 px-2 text-right font-mono font-bold ${isGroup ? 'text-sky-200 font-black' : 'text-zinc-200'}">
+              ${formatZar(rowCost)}
+            </td>
+
+            <!-- MARKUP % -->
             <td class="py-1 px-2 text-right font-mono">
               ${isGroup
                 ? `<span class="text-zinc-500 text-[10px]">GROUP</span>`
                 : `<div class="flex items-center justify-end gap-0.5">
-                     <input type="number" step="0.5" value="${rowMarkup}" onchange="updateRowNumeric('${row.id}', 'markup', this.value)" class="grid-cell-input text-right font-bold text-amber-300 w-16">
+                     <input type="number" step="0.5" ${readOnly ? 'disabled' : ''} value="${rowMarkup}" onchange="updateRowNumeric('${row.id}', 'markup', this.value)" class="grid-cell-input text-right font-bold text-amber-300 w-14">
                      <span class="text-zinc-500">%</span>
                    </div>`
               }
             </td>
 
+            <!-- ALLCON ESTIMATE (R) -->
             <td class="py-1.5 px-2 text-right font-mono font-black ${isGroup ? 'text-sky-200' : isStandalone ? 'text-amber-300' : 'text-emerald-400'}">
               ${formatZar(rowSell)}
             </td>
 
+            <!-- STATUS -->
             <td class="py-1 px-2">
-              <select onchange="updateRowField('${row.id}', 'status', this.value)" class="grid-cell-input text-[11px] font-bold bg-zinc-900 text-zinc-300">
+              <select ${readOnly ? 'disabled' : ''} onchange="updateRowField('${row.id}', 'status', this.value)" class="grid-cell-input text-[11px] font-bold bg-zinc-900 text-zinc-300">
                 <option value="" ${!row.status ? 'selected' : ''}>--</option>
                 <option value="QUOTED" ${row.status === 'QUOTED' ? 'selected' : ''}>QUOTED</option>
                 <option value="PENDING" ${row.status === 'PENDING' ? 'selected' : ''}>PENDING</option>
@@ -931,37 +1028,52 @@
               </select>
             </td>
 
-            <td class="py-1 px-2 text-center">
-              <div class="inline-flex items-center gap-1 text-zinc-500">
-                <button type="button" onclick="moveRow(${idx}, -1)" class="hover:text-white p-1" title="Move Up"><i class="fa-solid fa-chevron-up text-[10px]"></i></button>
-                <button type="button" onclick="moveRow(${idx}, 1)" class="hover:text-white p-1" title="Move Down"><i class="fa-solid fa-chevron-down text-[10px]"></i></button>
-                <button type="button" onclick="deleteRow('${row.id}')" class="hover:text-red-400 p-1" title="Delete Row"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
-              </div>
-            </td>
+            ${readOnly ? '' : `
+              <td class="py-1 px-2 text-center">
+                <div class="inline-flex items-center gap-1 text-zinc-500">
+                  <button type="button" onclick="moveRow(${idx}, -1)" class="hover:text-white p-1" title="Move Up"><i class="fa-solid fa-chevron-up text-[10px]"></i></button>
+                  <button type="button" onclick="moveRow(${idx}, 1)" class="hover:text-white p-1" title="Move Down"><i class="fa-solid fa-chevron-down text-[10px]"></i></button>
+                  <button type="button" onclick="deleteRow('${row.id}')" class="hover:text-red-400 p-1" title="Delete Row"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
+                </div>
+              </td>
+            `}
           </tr>
         `;
       }).join('');
     }
 
     function updateEstimateMeta(field, val) {
-      if (!activeEstimate) return;
+      if (!activeEstimate || isViewOnly()) return;
       activeEstimate[field] = String(val || "").toUpperCase().trim();
       renderFolderTree();
     }
 
     function updateEstimateKg(val) {
-      if (!activeEstimate) return;
+      if (!activeEstimate || isViewOnly()) return;
       activeEstimate.totalKg = parseFloat(val) || 0;
       renderActiveEstimate();
     }
 
     function updateRowField(rowId, field, val) {
+      if (isViewOnly()) return;
       const row = activeEstimate.rows.find(r => r.id === rowId);
       if (!row) return;
       row[field] = val;
     }
 
+    function updateRowRateOrQty(rowId, field, val) {
+      if (isViewOnly()) return;
+      const row = activeEstimate.rows.find(r => r.id === rowId);
+      if (!row) return;
+      if (row.qty === undefined) row.qty = 1;
+      if (row.unitRate === undefined) row.unitRate = Number(row.cost) || 0;
+      row[field] = parseFloat(val) || 0;
+      row.cost = (Number(row.qty) || 0) * (Number(row.unitRate) || 0);
+      renderActiveEstimate();
+    }
+
     function updateRowNumeric(rowId, field, val) {
+      if (isViewOnly()) return;
       const row = activeEstimate.rows.find(r => r.id === rowId);
       if (!row) return;
       row[field] = parseFloat(val) || 0;
@@ -969,13 +1081,15 @@
     }
 
     function addRow(type) {
-      if (!activeEstimate) return;
+      if (!activeEstimate || isViewOnly()) return;
       activeEstimate.rows.push({
         id: "R-" + Date.now() + "-" + Math.random().toString(36).substring(2, 5),
         type,
         category: type === 'group' ? "NEW SECTION GROUP" : type === 'standalone' ? "BUYOUT ITEM" : "NEW LINE ITEM",
         notes: "",
         ref: "",
+        qty: 1,
+        unitRate: 0,
         cost: 0,
         markup: type === 'standalone' ? 20 : 12,
         status: "",
@@ -986,6 +1100,7 @@
     }
 
     function moveRow(idx, dir) {
+      if (isViewOnly()) return;
       const target = idx + dir;
       if (target < 0 || target >= activeEstimate.rows.length) return;
       const temp = activeEstimate.rows[idx];
@@ -995,10 +1110,102 @@
     }
 
     function deleteRow(rowId) {
+      if (isViewOnly()) return;
       activeEstimate.rows = activeEstimate.rows.filter(r => r.id !== rowId);
       renderActiveEstimate();
     }
 
+    // ================= DUPLICATE ESTIMATE FOR VARIATIONS =================
+    async function duplicateCurrentEstimate() {
+      if (!activeEstimate || isViewOnly()) return;
+      const newName = prompt(
+        "Enter name for the duplicated variation estimate:",
+        `${activeEstimate.estimateName} - OPTION 2`
+      );
+      if (!newName || !newName.trim()) return;
+
+      const copyEst = JSON.parse(JSON.stringify(activeEstimate));
+      copyEst.id = "EST-" + Date.now();
+      copyEst.estimateName = newName.toUpperCase().trim();
+      copyEst.approvalStatus = "DRAFT";
+      copyEst.createdBy = currentUser ? currentUser.username : "Estimator";
+      copyEst.submittedBy = "";
+      copyEst.rows = (copyEst.rows || []).map(r => ({
+        ...r,
+        id: "R-" + Math.random().toString(36).substring(2, 9)
+      }));
+
+      activeEstimate = copyEst;
+      renderActiveEstimate();
+      await saveCurrentEstimate(true);
+    }
+
+    // ================= TARGETED APPROVAL STATUS WORKFLOW =================
+    function handleApprovalStatusChange(newStatus) {
+      if (!activeEstimate || isViewOnly()) return;
+      pendingStatusChange = newStatus;
+      activeEstimate.approvalStatus = newStatus;
+
+      if (newStatus === "DRAFT") {
+        saveCurrentEstimate(true);
+        return;
+      }
+
+      const sel = document.getElementById('status-notify-user');
+      const hint = document.getElementById('status-notify-hint');
+      const msgEl = document.getElementById('status-notify-msg');
+      document.getElementById('status-modal-badge').innerText = newStatus;
+
+      sel.innerHTML = allUsers
+        .filter(u => u.role !== "VIEW-ONLY")
+        .map(u => `<option value="${escapeHtml(u.username)}">@${escapeHtml(u.username)} (${escapeHtml(u.role)})</option>`)
+        .join('');
+
+      const senderName = currentUser ? currentUser.username : "Estimator";
+
+      if (newStatus === "SUBMITTED") {
+        // Record which estimator submitted this estimate so Boss's approval routes back ONLY to them
+        activeEstimate.submittedBy = senderName;
+        const bossUser = allUsers.find(u => u.username.toLowerCase() === 'boss' || u.role === 'APPROVER');
+        if (bossUser) sel.value = bossUser.username;
+        hint.innerText = `Submitting as ${senderName}. When approved, notifications will route directly back to ${senderName}.`;
+        msgEl.value = `@${sel.value} - Submitted by ${senderName} for approval. All supplier quotes attached.`;
+      } else {
+        // APPROVED or REVISION REQUIRED -> automatically target the estimator who submitted it
+        const targetEstimator = activeEstimate.submittedBy || activeEstimate.createdBy;
+        const matchedEstUser = allUsers.find(u => u.username.toLowerCase() === String(targetEstimator).toLowerCase());
+        if (matchedEstUser) sel.value = matchedEstUser.username;
+        hint.innerText = `Routed specifically to ${sel.value} (the estimator who submitted this estimate).`;
+        msgEl.value = `@${sel.value} - Estimate marked ${newStatus} by ${senderName}.`;
+      }
+
+      renderActiveEstimate();
+      document.getElementById('status-notify-modal').classList.remove('hidden');
+    }
+
+    async function skipStatusNotification() {
+      closeModal('status-notify-modal');
+      await saveCurrentEstimate(true);
+    }
+
+    async function submitStatusNotification(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-submit-status-notify');
+      btn.disabled = true;
+      btn.innerText = "Sending...";
+
+      const targetUser = document.getElementById('status-notify-user').value;
+      const message = document.getElementById('status-notify-msg').value.trim();
+
+      closeModal('status-notify-modal');
+      await saveCurrentEstimate(false);
+      await sendTagNotificationPayload(targetUser, message, `Status: ${activeEstimate.approvalStatus}`);
+
+      btn.disabled = false;
+      btn.innerText = "Save & Send Alert";
+    }
+
+    // ================= COMMERCIAL TAG PILLS + ONE-CLICK XERO COPY =================
     function renderCommercialPills() {
       const container = document.getElementById('commercial-pills-container');
       const tags = activeEstimate.commercialTags || [];
@@ -1010,7 +1217,31 @@
       `).join('');
     }
 
+    async function copyAllCommercialNotesForXero() {
+      if (!activeEstimate) return;
+      const tags = activeEstimate.commercialTags || [];
+      if (tags.length === 0) {
+        alert("No Commercial Notes to copy.");
+        return;
+      }
+
+      const formattedText = tags
+        .map(t => `${t.label.toUpperCase()}:\n${(t.content || "").trim()}`)
+        .join("\n\n");
+
+      try {
+        await navigator.clipboard.writeText(formattedText);
+        const btn = document.getElementById('btn-copy-xero-notes');
+        const orig = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check"></i> Copied for Xero!`;
+        setTimeout(() => { btn.innerHTML = orig; }, 2200);
+      } catch (err) {
+        prompt("Copy the Commercial Notes below for Xero:", formattedText);
+      }
+    }
+
     function openAddCommercialPillModal() {
+      if (isViewOnly()) return;
       activePillIndex = -1;
       document.getElementById('pill-modal-title').innerText = "Add Named Commercial Note Pill";
       document.getElementById('pill-label-input').value = "SOW";
@@ -1023,14 +1254,19 @@
       const pill = activeEstimate.commercialTags[idx];
       if (!pill) return;
       activePillIndex = idx;
-      document.getElementById('pill-modal-title').innerText = `Edit ${pill.label}`;
+      document.getElementById('pill-modal-title').innerText = isViewOnly() ? `View ${pill.label}` : `Edit ${pill.label}`;
       document.getElementById('pill-label-input').value = pill.label;
       document.getElementById('pill-content-input').value = pill.content || "";
-      document.getElementById('btn-delete-pill').classList.remove('hidden');
+      document.getElementById('pill-label-input').disabled = isViewOnly();
+      document.getElementById('pill-content-input').disabled = isViewOnly();
+      if (!isViewOnly()) {
+        document.getElementById('btn-delete-pill').classList.remove('hidden');
+      }
       document.getElementById('pill-modal').classList.remove('hidden');
     }
 
     function saveActivePill() {
+      if (isViewOnly()) return;
       const label = (document.getElementById('pill-label-input').value || "NOTE").toUpperCase().trim();
       const content = document.getElementById('pill-content-input').value;
       if (!activeEstimate.commercialTags) activeEstimate.commercialTags = [];
@@ -1045,6 +1281,7 @@
     }
 
     function deleteActivePill() {
+      if (isViewOnly()) return;
       if (activePillIndex >= 0) {
         activeEstimate.commercialTags.splice(activePillIndex, 1);
         renderCommercialPills();
@@ -1052,6 +1289,7 @@
       closeModal('pill-modal');
     }
 
+    // ================= ROW-ISOLATED SUPPLIER QUOTES =================
     function openQuotesModal(rowId) {
       const row = activeEstimate.rows.find(r => r.id === rowId);
       if (!row) return;
@@ -1077,14 +1315,14 @@
           </div>
           <div class="flex items-center gap-2 shrink-0">
             <a href="${q.url}" target="_blank" class="bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/40 px-2.5 py-1 rounded-lg font-bold">Open</a>
-            <button type="button" onclick="removeRowQuote(${idx})" class="text-zinc-500 hover:text-red-400 p-1" title="Remove from row"><i class="fa-solid fa-trash-can"></i></button>
+            ${isViewOnly() ? '' : `<button type="button" onclick="removeRowQuote(${idx})" class="text-zinc-500 hover:text-red-400 p-1" title="Remove from row"><i class="fa-solid fa-trash-can"></i></button>`}
           </div>
         </div>
       `).join('');
     }
 
     async function handleRowQuoteUpload(fileList) {
-      if (!fileList || fileList.length === 0 || !activeModalRowId) return;
+      if (isViewOnly() || !fileList || fileList.length === 0 || !activeModalRowId) return;
       const row = activeEstimate.rows.find(r => r.id === activeModalRowId);
       if (!row) return;
       if (!row.quotes) row.quotes = [];
@@ -1137,6 +1375,7 @@
     }
 
     async function removeRowQuote(idx) {
+      if (isViewOnly()) return;
       const row = activeEstimate.rows.find(r => r.id === activeModalRowId);
       if (!row || !row.quotes) return;
       row.quotes.splice(idx, 1);
@@ -1145,6 +1384,7 @@
       await saveCurrentEstimate(false);
     }
 
+    // ================= PERMANENT ROW COMMENTS & @MENTIONS =================
     function openRowCommentModal(rowId) {
       const row = activeEstimate.rows.find(r => r.id === rowId);
       if (!row) return;
@@ -1168,12 +1408,13 @@
             <div class="text-[10px] font-bold text-amber-400">${escapeHtml(c.author)} <span class="text-zinc-500 font-mono ml-1">${escapeHtml(c.timestamp)}</span></div>
             <div class="text-zinc-200 mt-0.5 break-words">${escapeHtml(c.text)}</div>
           </div>
-          <button type="button" onclick="deleteRowComment(${idx})" class="text-zinc-500 hover:text-red-400 p-1"><i class="fa-solid fa-trash-can text-[11px]"></i></button>
+          ${isViewOnly() ? '' : `<button type="button" onclick="deleteRowComment(${idx})" class="text-zinc-500 hover:text-red-400 p-1"><i class="fa-solid fa-trash-can text-[11px]"></i></button>`}
         </div>
       `).join('');
     }
 
     async function addRowComment() {
+      if (isViewOnly()) return;
       const text = document.getElementById('new-row-comment-text').value.trim();
       if (!text || !activeModalRowId) return;
       const row = activeEstimate.rows.find(r => r.id === activeModalRowId);
@@ -1202,6 +1443,7 @@
     }
 
     async function deleteRowComment(idx) {
+      if (isViewOnly()) return;
       const row = activeEstimate.rows.find(r => r.id === activeModalRowId);
       if (!row || !row.comments) return;
       row.comments.splice(idx, 1);
@@ -1210,8 +1452,9 @@
       await saveCurrentEstimate(false);
     }
 
+    // ================= SAVE ESTIMATE / TEMPLATES / NEW ESTIMATE =================
     async function saveCurrentEstimate(showFeedback = true) {
-      if (!activeEstimate) return;
+      if (!activeEstimate || isViewOnly()) return;
       const btn = document.getElementById('btn-save-est');
       if (showFeedback) {
         btn.disabled = true;
@@ -1222,7 +1465,8 @@
       let totalCost = 0, totalEstimate = 0;
       (activeEstimate.rows || []).forEach(r => {
         if (r.type !== 'group') {
-          const c = Number(r.cost) || 0;
+          const c = getRowBaseCost(r);
+          r.cost = c;
           const m = Number(r.markup) || 0;
           totalCost += c;
           totalEstimate += c * (1 + m / 100);
@@ -1254,7 +1498,7 @@
     }
 
     async function deleteCurrentEstimate() {
-      if (!activeEstimate) return;
+      if (!activeEstimate || isViewOnly()) return;
       if (!confirm(`Delete estimate "${activeEstimate.estimateName}" permanently?`)) return;
 
       const delId = activeEstimate.id;
@@ -1271,6 +1515,7 @@
     }
 
     function openNewEstimateModal() {
+      if (isViewOnly()) return;
       const clientList = [...new Set(allEstimates.map(e => e.clientFolder).filter(Boolean))];
       const subList = [...new Set(allEstimates.map(e => e.subFolder).filter(Boolean))];
       document.getElementById('client-folder-suggestions').innerHTML = clientList.map(c => `<option value="${escapeHtml(c)}">`).join('');
@@ -1283,6 +1528,7 @@
 
     async function createNewEstimate(e) {
       e.preventDefault();
+      if (isViewOnly()) return;
       const clientFolder = document.getElementById('new-est-client').value.toUpperCase().trim();
       const subFolder = document.getElementById('new-est-subfolder').value.toUpperCase().trim();
       const estimateName = document.getElementById('new-est-name').value.toUpperCase().trim();
@@ -1303,6 +1549,7 @@
         estimateName,
         approvalStatus: "DRAFT",
         createdBy: currentUser ? currentUser.username : "Estimator",
+        submittedBy: "",
         totalCost: 0,
         totalEstimate: 0,
         totalKg: 0,
@@ -1316,7 +1563,7 @@
     }
 
     function openEditFolderModal() {
-      if (!activeEstimate) return;
+      if (!activeEstimate || isViewOnly()) return;
       document.getElementById('move-client').value = activeEstimate.clientFolder;
       document.getElementById('move-subfolder').value = activeEstimate.subFolder;
       document.getElementById('move-name').value = activeEstimate.estimateName;
@@ -1325,6 +1572,7 @@
 
     async function submitEditFolder(e) {
       e.preventDefault();
+      if (isViewOnly()) return;
       activeEstimate.clientFolder = document.getElementById('move-client').value.toUpperCase().trim();
       activeEstimate.subFolder = document.getElementById('move-subfolder').value.toUpperCase().trim();
       activeEstimate.estimateName = document.getElementById('move-name').value.toUpperCase().trim();
@@ -1334,6 +1582,7 @@
     }
 
     function openSaveTemplateModal() {
+      if (isViewOnly()) return;
       document.getElementById('template-name-input').value = "";
       const savedCustom = allTemplates.filter(t => t.id !== "BUILTIN-ALLCON-STD");
       document.getElementById('existing-templates-list').innerHTML = savedCustom.length
@@ -1349,6 +1598,7 @@
 
     async function submitSaveTemplate(e) {
       e.preventDefault();
+      if (isViewOnly()) return;
       const templateName = document.getElementById('template-name-input').value.toUpperCase().trim();
       if (!templateName || !activeEstimate) return;
 
@@ -1378,6 +1628,7 @@
     }
 
     async function deleteTemplate(id) {
+      if (isViewOnly()) return;
       allTemplates = allTemplates.filter(t => t.id !== id);
       openSaveTemplateModal();
       await fetch(SCRIPT_URL, {
@@ -1385,15 +1636,6 @@
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ action: "delete_template", id })
       });
-    }
-
-    function openTagModal() {
-      const sel = document.getElementById('tag-target-user');
-      sel.innerHTML = allUsers.map(u => `<option value="${escapeHtml(u.username)}">@${escapeHtml(u.username)} (${escapeHtml(u.role)})</option>`).join('');
-      const bossUser = allUsers.find(u => u.username.toLowerCase() === 'boss' || u.role === 'APPROVER');
-      if (bossUser) sel.value = bossUser.username;
-      document.getElementById('tag-message-input').value = `@${sel.value} - Estimate complete and supplier quotes attached. Please review & approve.`;
-      document.getElementById('tag-modal').classList.remove('hidden');
     }
 
     async function sendTagNotificationPayload(targetUser, message, rowRef = "") {
@@ -1415,40 +1657,22 @@
       await loadAllData(false);
     }
 
-    async function submitTagNotification(e) {
-      e.preventDefault();
-      const btn = document.getElementById('btn-send-tag');
-      btn.disabled = true;
-      btn.innerText = "Sending Alert...";
-
-      const targetUser = document.getElementById('tag-target-user').value;
-      const message = document.getElementById('tag-message-input').value.trim();
-      await sendTagNotificationPayload(targetUser, message);
-
-      btn.disabled = false;
-      btn.innerText = "Send @Tag Alert";
-      closeModal('tag-modal');
-    }
-
     function openNotificationsModal() {
       const container = document.getElementById('notifications-list');
       if (allNotifications.length === 0) {
-        container.innerHTML = `<div class="text-zinc-500 text-center py-6">No @tag notifications in the last 30 days.</div>`;
+        container.innerHTML = `<div class="text-zinc-500 text-center py-6">No @mentions recorded yet.</div>`;
       } else {
         container.innerHTML = [...allNotifications].reverse().map(n => {
           const created = new Date(n.createdAt);
-          const daysAgo = Math.max(0, Math.floor((Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)));
-          const daysLeft = Math.max(0, 30 - daysAgo);
           return `
             <div class="p-3 bg-zinc-900 border border-zinc-800 rounded-xl space-y-1.5">
               <div class="flex justify-between items-center gap-2">
-                <span class="font-black text-red-400">@${escapeHtml(n.targetUser)} <span class="text-zinc-500 font-normal">tagged by</span> <strong class="text-white">${escapeHtml(n.sender)}</strong></span>
-                <span class="text-[10px] bg-zinc-800 text-amber-300 px-2 py-0.5 rounded font-bold">${daysLeft}d remaining</span>
+                <span class="font-black text-red-400">@${escapeHtml(n.targetUser)} <span class="text-zinc-500 font-normal">mentioned by</span> <strong class="text-white">${escapeHtml(n.sender)}</strong></span>
+                <span class="text-[10px] text-zinc-500 font-mono">${created.toLocaleString()}</span>
               </div>
               <div class="text-[11px] font-bold text-sky-300">${escapeHtml(n.estimatePath)} ${n.rowRef ? `• [${escapeHtml(n.rowRef)}]` : ''}</div>
               <div class="text-zinc-200">${escapeHtml(n.message)}</div>
-              <div class="flex justify-between items-center pt-1">
-                <span class="text-[10px] text-zinc-500 font-mono">${created.toLocaleString()}</span>
+              <div class="flex justify-end pt-1">
                 <button type="button" onclick="selectEstimate('${n.estimateId}'); closeModal('notifications-modal');" class="text-[11px] font-bold text-emerald-400 hover:underline">Open Estimate &rarr;</button>
               </div>
             </div>
@@ -1458,6 +1682,7 @@
       document.getElementById('notifications-modal').classList.remove('hidden');
     }
 
+    // ================= EXPORT TO FORMATTED .XLSX + SUPPLIER QUOTES .ZIP =================
     async function exportEstimateZipPackage() {
       if (!activeEstimate) return;
       const btn = document.getElementById('btn-export-zip');
@@ -1474,7 +1699,7 @@
           ["ALLCON FABRICATION & ENGINEERING — PROJECT ESTIMATE"],
           [`Client: ${activeEstimate.clientFolder} | Sub-Folder: ${activeEstimate.subFolder} | Estimate: ${activeEstimate.estimateName} | Status: ${activeEstimate.approvalStatus}`],
           [],
-          ["#", "Category & Item", "Supplier / Item Notes", "Supplier Ref", "Supplier Quoted (R)", "Markup %", "Allcon Estimate (R)", "Status", "Attached Quotes", "Comments (Truncated)"]
+          ["#", "Category & Item", "Supplier / Item Notes", "Supplier Ref", "Qty / Hrs", "Unit Rate (R)", "Supplier Quoted (R)", "Markup %", "Allcon Estimate (R)", "Status", "Attached Quotes", "Comments (Truncated)"]
         ];
 
         const rowHeights = [{ hpt: 24 }, { hpt: 18 }, { hpt: 10 }, { hpt: 22 }];
@@ -1482,7 +1707,9 @@
 
         rows.forEach((r, idx) => {
           const isGroup = r.type === 'group';
-          const cost = isGroup ? (groupTotals[r.id]?.cost || 0) : (Number(r.cost) || 0);
+          const qtyVal = r.qty !== undefined ? Number(r.qty) : 1;
+          const rateVal = r.unitRate !== undefined ? Number(r.unitRate) : (Number(r.cost) || 0);
+          const cost = isGroup ? (groupTotals[r.id]?.cost || 0) : (qtyVal * rateVal);
           const markup = isGroup ? "" : (Number(r.markup) || 0);
           const sell = isGroup ? (groupTotals[r.id]?.sell || 0) : (cost * (1 + (Number(r.markup) || 0) / 100));
 
@@ -1500,6 +1727,8 @@
             isGroup ? r.category : `   ${r.category}`,
             r.notes || "",
             r.ref || "",
+            isGroup ? "" : qtyVal,
+            isGroup ? "" : rateVal,
             cost,
             isGroup ? "" : `${markup}%`,
             sell,
@@ -1514,8 +1743,8 @@
         const ratePerKg = totalKg > 0 ? grandSell / totalKg : 0;
 
         wsData.push([]);
-        wsData.push(["", "TOTAL PROJECT ESTIMATE", "", "", grandCost, "", grandSell, activeEstimate.approvalStatus, "", ""]);
-        wsData.push(["", "TOTAL MASS (KG)", totalKg, "RATE PER KG (R/KG)", ratePerKg, "", "", "", "", ""]);
+        wsData.push(["", "TOTAL PROJECT ESTIMATE", "", "", "", "", grandCost, "", grandSell, activeEstimate.approvalStatus, "", ""]);
+        wsData.push(["", "TOTAL MASS (KG)", totalKg, "RATE PER KG (R/KG)", ratePerKg, "", "", "", "", "", "", ""]);
 
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -1523,8 +1752,10 @@
         ws["!cols"] = [
           { wch: 5 },
           { wch: 34 },
-          { wch: 32 },
+          { wch: 30 },
           { wch: 14 },
+          { wch: 11 },
+          { wch: 16 },
           { wch: 18 },
           { wch: 11 },
           { wch: 18 },
@@ -1534,7 +1765,7 @@
         ];
         ws["!rows"] = rowHeights;
 
-        for (let C = 0; C < 10; C++) {
+        for (let C = 0; C < 12; C++) {
           const hCell = ws[XLSX.utils.encode_cell({ r: 3, c: C })];
           if (hCell) {
             hCell.s = {
@@ -1547,11 +1778,11 @@
 
         rows.forEach((r, idx) => {
           const excelRow = idx + 4;
-          for (let C = 0; C < 10; C++) {
+          for (let C = 0; C < 12; C++) {
             const cellRef = XLSX.utils.encode_cell({ r: excelRow, c: C });
             const cell = ws[cellRef];
             if (!cell) continue;
-            if (C === 4 || C === 6) cell.z = '"R"#,##0.00';
+            if (C === 5 || C === 6 || C === 8) cell.z = '"R"#,##0.00';
             if (r.type === 'group') {
               cell.s = {
                 font: { bold: true, color: { rgb: "0F172A" } },
@@ -1619,6 +1850,7 @@
       btn.innerHTML = origHtml;
     }
 
+    // ================= ADMIN USER MANAGEMENT =================
     function openAdminModal() {
       renderUsersList();
       document.getElementById('admin-modal').classList.remove('hidden');
