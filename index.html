@@ -87,7 +87,6 @@
       </div>
 
       <div class="flex items-center gap-2 flex-wrap">
-        <!-- 30-DAY NOTIFICATIONS BELL -->
         <button onclick="openNotificationsModal()" class="relative bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold px-3 py-2 rounded-xl border border-zinc-700 transition flex items-center gap-1.5" title="30-Day @Tag Notifications">
           <i class="fa-solid fa-bell text-amber-400"></i>
           <span class="hidden sm:inline">30d Tags</span>
@@ -188,7 +187,7 @@
           </div>
         </div>
 
-        <!-- COMMERCIAL TAG PILLS (INCLUSIONS, EXCLUDES, LEAD TIME, PAYMENT TERMS, SOW, ETC.) -->
+        <!-- COMMERCIAL TAG PILLS -->
         <div class="pt-2 border-t border-zinc-800/80 flex flex-wrap items-center gap-2">
           <span class="text-[10px] font-black uppercase tracking-wider text-zinc-400 mr-1">
             <i class="fa-solid fa-tags text-red-500 mr-1"></i> Commercial Notes:
@@ -200,7 +199,7 @@
         </div>
       </div>
 
-      <!-- KPI SUMMARY STRIP (MIRRORS SMARTSHEET TOTALS & RATE PER KG) -->
+      <!-- KPI SUMMARY STRIP -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div class="card-glass p-3.5 rounded-xl border-l-4 border-sky-500">
           <div class="text-[10px] font-bold text-zinc-400 uppercase">Total Supplier Quoted</div>
@@ -220,7 +219,7 @@
         </div>
       </div>
 
-      <!-- SMARTSHEET GRID TOOLBAR -->
+      <!-- SMARTSHEET GRID TOOLBAR & TABLE -->
       <div class="card-glass rounded-2xl overflow-hidden">
         <div class="bg-zinc-900/90 px-4 py-2.5 border-b border-zinc-800 flex flex-wrap justify-between items-center gap-2">
           <div class="flex items-center gap-2 flex-wrap">
@@ -241,7 +240,6 @@
           </div>
         </div>
 
-        <!-- EDITABLE SPREADSHEET TABLE -->
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse text-xs">
             <thead>
@@ -266,7 +264,7 @@
     </section>
   </div>
 
-  <!-- MODAL: NEW ESTIMATE (SELECT FOLDER + TEMPLATE) -->
+  <!-- MODAL: NEW ESTIMATE -->
   <div id="new-est-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
     <div class="card-glass rounded-2xl max-w-md w-full p-5 space-y-4">
       <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
@@ -328,7 +326,7 @@
     </div>
   </div>
 
-  <!-- MODAL: ROW-ISOLATED SUPPLIER QUOTES (PAPERCLIP DRAWER) -->
+  <!-- MODAL: ROW-ISOLATED SUPPLIER QUOTES -->
   <div id="quotes-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
     <div class="card-glass rounded-2xl max-w-lg w-full p-5 space-y-4">
       <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
@@ -382,7 +380,7 @@
     </div>
   </div>
 
-  <!-- MODAL: COMMERCIAL PILL EDITOR (INCLUSIONS, EXCLUDES, SOW, TERMS) -->
+  <!-- MODAL: COMMERCIAL PILL EDITOR -->
   <div id="pill-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
     <div class="card-glass rounded-2xl max-w-lg w-full p-5 space-y-4">
       <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
@@ -433,7 +431,7 @@
     </div>
   </div>
 
-  <!-- MODAL: TAG / NOTIFY USER (30-DAY PERSISTENT + EMAIL) -->
+  <!-- MODAL: TAG / NOTIFY USER -->
   <div id="tag-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
     <div class="card-glass rounded-2xl max-w-md w-full p-5 space-y-4">
       <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
@@ -458,7 +456,7 @@
     </div>
   </div>
 
-  <!-- MODAL: 30-DAY ACTIVE NOTIFICATIONS DRAWER -->
+  <!-- MODAL: 30-DAY ACTIVE NOTIFICATIONS -->
   <div id="notifications-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-3">
     <div class="card-glass rounded-2xl max-w-xl w-full p-5 space-y-4">
       <div class="flex justify-between items-center border-b border-zinc-800 pb-3">
@@ -513,7 +511,6 @@
     let activePillIndex = -1;
     let collapsedFolders = new Set();
 
-    // BUILT-IN DEFAULT ALLCON TEMPLATE (MATCHING SMARTSHEET SCREENSHOTS)
     function getBuiltInDefaultTemplate() {
       const uid = () => "R-" + Math.random().toString(36).substring(2, 9);
       return {
@@ -615,7 +612,6 @@
 
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-    // ================= DATA SYNC & AUTH =================
     async function loadAllData(manual = false) {
       if (manual) document.getElementById('sync-indicator').innerHTML = `<i class="fa-solid fa-spinner fa-spin text-amber-400"></i> Syncing...`;
       try {
@@ -712,7 +708,6 @@
       }
     });
 
-    // ================= FOLDER HIERARCHY TREE =================
     function toggleFolderNode(key) {
       if (collapsedFolders.has(key)) collapsedFolders.delete(key);
       else collapsedFolders.add(key);
@@ -804,7 +799,6 @@
       }).join('');
     }
 
-    // ================= ACTIVE ESTIMATE RENDERING & INDEPENDENT ROW MATH =================
     function computeGroupSubtotals(rows) {
       const groupTotals = {};
       let currentGroupId = null;
@@ -881,7 +875,6 @@
           <tr class="${rowBgClass}">
             <td class="py-1.5 px-2 text-center text-[11px] font-mono text-zinc-500">${idx + 1}</td>
 
-            <!-- ROW-ISOLATED PAPERCLIP + CHAT BUBBLE -->
             <td class="py-1.5 px-2 text-center">
               <div class="inline-flex items-center gap-2">
                 <button type="button" onclick="openQuotesModal('${row.id}')" class="relative p-1 rounded hover:bg-zinc-800 transition ${quoteCount > 0 ? 'text-red-500' : 'text-zinc-400 hover:text-zinc-200'}" title="${quoteCount > 0 ? quoteCount + ' Supplier Quote(s) Attached' : 'Attach Supplier Quote'}">
@@ -895,22 +888,18 @@
               </div>
             </td>
 
-            <!-- CATEGORY & ITEM -->
             <td class="py-1 px-2 ${!isGroup && !isStandalone ? 'pl-6' : ''}">
               <input type="text" value="${escapeHtml(row.category)}" onchange="updateRowField('${row.id}', 'category', this.value)" class="grid-cell-input uppercase ${isGroup ? 'text-sky-200 font-black' : isStandalone ? 'text-amber-300 font-black' : 'text-white font-semibold'}">
             </td>
 
-            <!-- SUPPLIER / NOTES -->
             <td class="py-1 px-2">
               <input type="text" value="${escapeHtml(row.notes)}" onchange="updateRowField('${row.id}', 'notes', this.value)" class="grid-cell-input text-zinc-300">
             </td>
 
-            <!-- SUPPLIER REF -->
             <td class="py-1 px-2">
               <input type="text" value="${escapeHtml(row.ref)}" onchange="updateRowField('${row.id}', 'ref', this.value)" placeholder="Ref" class="grid-cell-input text-zinc-400">
             </td>
 
-            <!-- SUPPLIER QUOTED (R) -->
             <td class="py-1 px-2 text-right font-mono">
               ${isGroup
                 ? `<span class="px-2 py-1 text-sky-200 font-black">${formatZar(rowCost)}</span>`
@@ -918,7 +907,6 @@
               }
             </td>
 
-            <!-- MARKUP % -->
             <td class="py-1 px-2 text-right font-mono">
               ${isGroup
                 ? `<span class="text-zinc-500 text-[10px]">GROUP</span>`
@@ -929,12 +917,10 @@
               }
             </td>
 
-            <!-- ALLCON ESTIMATE (R) -->
             <td class="py-1.5 px-2 text-right font-mono font-black ${isGroup ? 'text-sky-200' : isStandalone ? 'text-amber-300' : 'text-emerald-400'}">
               ${formatZar(rowSell)}
             </td>
 
-            <!-- STATUS -->
             <td class="py-1 px-2">
               <select onchange="updateRowField('${row.id}', 'status', this.value)" class="grid-cell-input text-[11px] font-bold bg-zinc-900 text-zinc-300">
                 <option value="" ${!row.status ? 'selected' : ''}>--</option>
@@ -945,7 +931,6 @@
               </select>
             </td>
 
-            <!-- ROW MOVE / DELETE -->
             <td class="py-1 px-2 text-center">
               <div class="inline-flex items-center gap-1 text-zinc-500">
                 <button type="button" onclick="moveRow(${idx}, -1)" class="hover:text-white p-1" title="Move Up"><i class="fa-solid fa-chevron-up text-[10px]"></i></button>
@@ -1014,7 +999,6 @@
       renderActiveEstimate();
     }
 
-    // ================= COMMERCIAL TAG PILLS (INCLUSIONS, EXCLUDES, SOW, TERMS) =================
     function renderCommercialPills() {
       const container = document.getElementById('commercial-pills-container');
       const tags = activeEstimate.commercialTags || [];
@@ -1068,7 +1052,6 @@
       closeModal('pill-modal');
     }
 
-    // ================= ROW-ISOLATED SUPPLIER QUOTES (SUPABASE STORAGE) =================
     function openQuotesModal(rowId) {
       const row = activeEstimate.rows.find(r => r.id === rowId);
       if (!row) return;
@@ -1162,7 +1145,6 @@
       await saveCurrentEstimate(false);
     }
 
-    // ================= ROW CHAT BUBBLE COMMENTS =================
     function openRowCommentModal(rowId) {
       const row = activeEstimate.rows.find(r => r.id === rowId);
       if (!row) return;
@@ -1210,7 +1192,6 @@
       renderActiveEstimate();
       await saveCurrentEstimate(false);
 
-      // Detect @mentions inside comment and auto-trigger 30-day tag + email
       const mentionMatches = text.match(/@([a-zA-Z0-9_.-]+)/g);
       if (mentionMatches) {
         for (const rawMention of mentionMatches) {
@@ -1229,7 +1210,6 @@
       await saveCurrentEstimate(false);
     }
 
-    // ================= SAVE ESTIMATE / TEMPLATES / NEW ESTIMATE =================
     async function saveCurrentEstimate(showFeedback = true) {
       if (!activeEstimate) return;
       const btn = document.getElementById('btn-save-est');
@@ -1407,7 +1387,6 @@
       });
     }
 
-    // ================= 30-DAY PERSISTENT @TAG NOTIFICATIONS =================
     function openTagModal() {
       const sel = document.getElementById('tag-target-user');
       sel.innerHTML = allUsers.map(u => `<option value="${escapeHtml(u.username)}">@${escapeHtml(u.username)} (${escapeHtml(u.role)})</option>`).join('');
@@ -1479,7 +1458,6 @@
       document.getElementById('notifications-modal').classList.remove('hidden');
     }
 
-    // ================= EXPORT TO FORMATTED .XLSX + SUPPLIER QUOTES .ZIP =================
     async function exportEstimateZipPackage() {
       if (!activeEstimate) return;
       const btn = document.getElementById('btn-export-zip');
@@ -1492,7 +1470,6 @@
         const rows = activeEstimate.rows || [];
         const groupTotals = computeGroupSubtotals(rows);
 
-        // 1. Build Main Estimate Sheet Data with auto-truncated Comments column
         const wsData = [
           ["ALLCON FABRICATION & ENGINEERING — PROJECT ESTIMATE"],
           [`Client: ${activeEstimate.clientFolder} | Sub-Folder: ${activeEstimate.subFolder} | Estimate: ${activeEstimate.estimateName} | Status: ${activeEstimate.approvalStatus}`],
@@ -1516,7 +1493,6 @@
 
           const quoteNames = (r.quotes || []).map(q => q.name).join("; ");
           const fullComments = (r.comments || []).map(c => `[${c.timestamp}] ${c.author}: ${c.text}`).join(" | ");
-          // Auto-cutoff at 110 characters so cells never stretch out of proportion in Excel
           const safeComment = fullComments.length > 110 ? fullComments.substring(0, 107) + "..." : fullComments;
 
           wsData.push([
@@ -1558,7 +1534,6 @@
         ];
         ws["!rows"] = rowHeights;
 
-        // Style header & group rows
         for (let C = 0; C < 10; C++) {
           const hCell = ws[XLSX.utils.encode_cell({ r: 3, c: C })];
           if (hCell) {
@@ -1593,7 +1568,6 @@
 
         XLSX.utils.book_append_sheet(wb, ws, "Estimate Breakdown");
 
-        // 2. Second Tab: Commercial Notes (Inclusions, Excludes, Lead Time, Payment Terms, SOW)
         const commData = [["COMMERCIAL LABEL", "DETAILS"]];
         (activeEstimate.commercialTags || []).forEach(t => {
           commData.push([t.label, t.content]);
@@ -1608,7 +1582,6 @@
         const rootFolder = zip.folder(`${cleanClient}_${cleanEstName}`);
         rootFolder.file(`${cleanEstName}.xlsx`, xlsxBuffer);
 
-        // 3. Fetch & Bundle All Attached Supplier Quotes into Row-Specific Subfolders
         const quotesRoot = rootFolder.folder("Supplier_Quotes");
         for (let i = 0; i < rows.length; i++) {
           const r = rows[i];
@@ -1646,7 +1619,6 @@
       btn.innerHTML = origHtml;
     }
 
-    // ================= ADMIN USER MANAGEMENT =================
     function openAdminModal() {
       renderUsersList();
       document.getElementById('admin-modal').classList.remove('hidden');
