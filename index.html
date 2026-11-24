@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#0b0b0c">
-  <title>ALLCON - Smartsheet Estimating & Quote Matrix</title>
+  <title>ALLCON - Quote & Estimating</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2224%22 fill=%22%23121215%22/><path d=%22M22 24h56v52H22z%22 fill=%22none%22 stroke=%22%23dc2626%22 stroke-width=%228%22/><path d=%22M22 42h56M46 24v52%22 stroke=%22%23ffffff%22 stroke-width=%226%22/></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -52,13 +52,13 @@
     <div class="card-glass rounded-2xl max-w-sm w-full p-6 space-y-5">
       <div class="text-center space-y-2">
         <img src="https://raw.githubusercontent.com/allconafrica/KERF/main/ALLCON-Logo.jpg" alt="ALLCON" class="h-12 mx-auto rounded bg-white p-1">
-        <h1 class="text-lg font-extrabold tracking-tight text-white">Estimating & Quote Matrix</h1>
+        <h1 class="text-lg font-extrabold tracking-tight text-white">Quote & Estimating</h1>
         <p class="text-xs text-zinc-400">Sign in with your assigned estimating credentials</p>
       </div>
       <form onsubmit="handleLogin(event)" class="space-y-3 text-sm">
         <div>
           <label class="block text-xs font-bold text-zinc-400 mb-1">USERNAME</label>
-          <input type="text" id="login-user" required placeholder="e.g. Norman or Boss" class="w-full p-3 rounded-xl bg-zinc-800 border border-zinc-700 text-white">
+          <input type="text" id="login-user" required placeholder="Name or Email" class="w-full p-3 rounded-xl bg-zinc-800 border border-zinc-700 text-white">
         </div>
         <div>
           <label class="block text-xs font-bold text-zinc-400 mb-1">PASSWORD</label>
@@ -80,7 +80,7 @@
           <img src="https://raw.githubusercontent.com/allconafrica/KERF/main/ALLCON-Logo.jpg" alt="ALLCON" class="h-9 rounded bg-white p-1">
         </a>
         <div>
-          <h1 class="text-base md:text-lg font-black text-white leading-tight tracking-tight">ALLCON Estimating & Quote Matrix</h1>
+          <h1 class="text-base md:text-lg font-black text-white leading-tight tracking-tight">ALLCON Quote & Estimating</h1>
           <div class="text-[11px] text-zinc-400 flex items-center gap-2">
             <span>User: <strong id="header-username" class="text-amber-400">---</strong></span>
             <span>•</span>
@@ -212,7 +212,7 @@
             <i class="fa-solid fa-plus text-[9px] text-red-400"></i> Add Label (SOW / Terms)
           </button>
           <button type="button" id="btn-copy-xero-notes" onclick="copyAllCommercialNotesForXero()" class="ml-auto text-[11px] font-bold bg-emerald-950/70 hover:bg-emerald-800/60 text-emerald-300 border border-emerald-700/60 px-3 py-1 rounded-full transition flex items-center gap-1.5" title="Copy all Commercial Notes formatted for Xero Quote">
-            <i class="fa-regular fa-copy text-[10px]"></i> Copy All for Xero
+            <i class="fa-regular fa-copy text-[10px]"></i> Copy All
           </button>
         </div>
       </div>
@@ -503,7 +503,7 @@
         <button onclick="closeModal('admin-modal')" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form onsubmit="handleAddUser(event)" class="grid grid-cols-2 gap-2 text-xs bg-zinc-900 p-3 rounded-xl">
-        <input type="text" id="new-u-name" required placeholder="Username (e.g. Norlene)" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white">
+        <input type="text" id="new-u-name" required placeholder="Username (Name or Email)" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white">
         <input type="text" id="new-u-pass" required placeholder="Password" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white">
         <select id="new-u-role" class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white font-bold">
           <option value="ESTIMATOR">ESTIMATOR</option>
@@ -688,8 +688,8 @@
             const tpl = getBuiltInDefaultTemplate();
             activeEstimate = {
               id: "EST-" + Date.now(),
-              clientFolder: "MITTAL",
-              subFolder: "ESKOM",
+              clientFolder: "CLIENT",
+              subFolder: "PROJECT",
               estimateName: "NEW SAMPLE ESTIMATE",
               approvalStatus: "DRAFT",
               createdBy: currentUser ? currentUser.username : "Estimator",
